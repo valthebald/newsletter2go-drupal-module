@@ -24,7 +24,7 @@ window.onload = function (e) {
         if (rebuildForm) {
             var checkBoxes = document.getElementsByClassName('form-checkbox'),
                     fields = [], i, elem,
-                    texts, styles, inputStyle = '';
+                    texts, styles, inputStyle;
 
             for (i = 0; i < checkBoxes.length; i++) {
                 if (checkBoxes[i].checked === true) {
@@ -42,6 +42,7 @@ window.onload = function (e) {
             texts['button'] = document.getElementById('edit-widget-texts-buttontext').value;
 
             styles = [];
+            styles['formBgColor'] = document.getElementById('edit-widget-colors-formbgcolor').value;
             styles['textColor'] = document.getElementById('edit-widget-colors-textcolor').value;
             styles['borderColor'] = document.getElementById('edit-widget-colors-bordercolor').value;
             styles['backgroundColor'] = document.getElementById('edit-widget-colors-bgcolor').value;
@@ -52,7 +53,12 @@ window.onload = function (e) {
                 return a['sort'] - b['sort'];
             });
 
-            sourceCode = '<div id="n2goResponseArea" ' + (styles['textColor'] ? 'style="color:' + styles['textColor'] + '"' : '') + '>';
+            inputStyle = 'style="';
+            inputStyle += styles['formBgColor'] ? 'background-color:' + styles['formBgColor'] + '; ' : '';
+            inputStyle += styles['textColor'] ? 'color:' + styles['textColor'] + '; ' : '';
+            inputStyle += '" ';
+
+            sourceCode = '<div id="n2goResponseArea" ' + inputStyle + '>';
             sourceCode += '\n  <form method="post" id="n2goForm">';
 
             if (styles['borderColor'] || styles['backgroundColor'] || styles['textColor']) {
@@ -94,31 +100,33 @@ window.onload = function (e) {
 
     function extractValues(elem) {
         return {
-            nameSort: elem.children[1].name,
-            nameRequired: elem.children[2].name,
-            valueRequired: elem.children[2].value,
+            valueRequired: elem.children[3].value,
             id: elem.children[0].children[0].id,
             name: elem.children[0].children[0].name,
             value: elem.children[0].children[0].value,
             title: elem.children[0].children[0].title,
             checked: elem.children[0].children[0].checked,
             disabled: elem.children[0].children[0].disabled,
-            label: elem.children[0].children[1].innerHTML
+            label: elem.children[0].children[1].innerHTML,
+            displayLabel: elem.children[1].innerHTML
         };
     }
 
     function importValues(elem, values) {
-        elem.children[1].name = values.nameSort;
-        elem.children[2].name = values.nameRequired;
-        elem.children[2].value = values.valueRequired;
+        elem.children[1].innerHTML = values.displayLabel;
+        elem.children[2].name = values.value + 'Sort';
+        elem.children[3].name = values.value + 'Required';
+        elem.children[3].value = values.valueRequired;
+        elem.children[4].name = 'textFields[' + values.value + ']';
+        elem.children[4].value = values.title;
         elem.children[0].children[0].id = values.id;
         elem.children[0].children[0].name = values.name;
-        elem.children[0].children[1].htmlFor = values.id;
         elem.children[0].children[0].value = values.value;
         elem.children[0].children[0].title = values.title;
-        elem.children[0].children[1].innerHTML = values.label;
         elem.children[0].children[0].checked = values.checked;
         elem.children[0].children[0].disabled = values.disabled;
+        elem.children[0].children[1].htmlFor = values.id;
+        elem.children[0].children[1].innerHTML = values.label;
     }
 
     function handleDragStart(e) {
@@ -166,6 +174,40 @@ window.onload = function (e) {
         buildWidgetForm(true);
     }
 
+    function transformToEditBox(e) {
+        var me = this,
+            parent = me.parentNode,
+            textField = document.createElement('input'),
+            oldText = me.textContent.replace('*', '').trim();
+
+        textField.type = 'text';
+        textField.value = oldText;
+        textField.addEventListener('blur', function(){
+            var val = this.value;
+
+            parent.draggable = true;
+            val = val ? val : oldText;
+            if (oldText === val) {
+                parent.replaceChild(me, this);
+                return true;
+            }
+
+            parent.children[0].children[0].title = val;
+            parent.children[4].value = val;
+            me.innerHTML = me.innerHTML.replace(oldText, val);
+
+            parent.replaceChild(me, this);
+            buildWidgetForm(true);
+        }, false);
+
+        parent.replaceChild(textField, me);
+        parent.draggable = false;
+        textField.focus();
+
+        e.preventDefault();
+        return false;
+    }
+
     [].forEach.call(document.querySelectorAll('#widgetFields .widgetField'), function (field) {
         field.addEventListener('dragstart', handleDragStart, false);
         field.addEventListener('dragenter', handleDragEnter, false);
@@ -173,6 +215,10 @@ window.onload = function (e) {
         field.addEventListener('dragleave', handleDragLeave, false);
         field.addEventListener('drop', handleDrop, false);
         field.addEventListener('dragend', handleDragEnd, false);
+    });
+
+    [].forEach.call(document.querySelectorAll('.n2go-editable-label'), function (field) {
+        field.addEventListener('click', transformToEditBox, false);
     });
 
     buildWidgetForm(true);
@@ -191,20 +237,22 @@ window.onload = function (e) {
 
     function hookClickHandler(checkbox) {
         checkbox.onclick = function (e) {
-            var hiddenReq = this.parentElement.parentElement.children[2];
+            var grandparent = this.parentElement.parentElement,
+                hiddenReq = grandparent.children[3];
+
             if (!this.checked) {
                 if (hiddenReq.value === 'required') {
                     e.preventDefault();
                     this.checked = true;
                     hiddenReq.value = '';
-                    this.nextElementSibling.innerHTML = this.title;
+                    grandparent.children[1].innerHTML = this.title;
                     buildWidgetForm();
 
                     return false;
                 }
             } else {
                 hiddenReq.value = 'required';
-                this.nextElementSibling.innerHTML += ' <span class="form-required n2go-required" title="This field is required.">*</span>';
+                grandparent.children[1].innerHTML += ' <span class="form-required n2go-required" title="This field is required.">*</span>';
             }
         };
     }

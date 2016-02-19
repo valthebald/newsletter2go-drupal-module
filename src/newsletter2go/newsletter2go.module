@@ -180,6 +180,7 @@ function newsletter2go_form($form, &$form_state)
     $texts = variable_get('newsletter2go_texts');
     $colors = variable_get('newsletter2go_colors');
     $widget = variable_get('newsletter2go_widget');
+    $fieldTitles = variable_get('newsletter2go_titles');
     $requiredFields = variable_get('newsletter2go_required');
 
     $attributesApi = executeN2Go('get/attributes', array('key' => $apiKey));
@@ -252,28 +253,32 @@ function newsletter2go_form($form, &$form_state)
     $fields = array(
         'email' => array(
             'name' => 'email',
-            'title' => t('E-mail address'),
+            'label' => t('E-mail'),
+            'title' => isset($fieldTitles['email']) ? $fieldTitles['email'] : t('E-mail address'),
             'sort' => isset($selectedFields['email']) ? $selectedFields['email'] : $num,
             'checked' => true,
             'required' => 'required',
         ),
         'firstname' => array(
             'name' => 'firstname',
-            'title' => t('First name'),
+            'label' => t('First name'),
+            'title' => isset($fieldTitles['firstname']) ? $fieldTitles['firstname'] : t('First name'),
             'sort' => isset($selectedFields['firstname']) ? $selectedFields['firstname'] : $num,
             'checked' => isset($selectedFields['firstname']),
             'required' => isset($requiredFields['firstname']) ? $requiredFields['firstname'] : '',
         ),
         'lastname' => array(
             'name' => 'lastname',
-            'title' => t('Last name'),
+            'label' => t('Last name'),
+            'title' => isset($fieldTitles['lastname']) ? $fieldTitles['lastname'] : t('Last name'),
             'sort' => isset($selectedFields['lastname']) ? $selectedFields['lastname'] : $num,
             'checked' => isset($selectedFields['lastname']),
             'required' => isset($requiredFields['lastname']) ? $requiredFields['lastname'] : '',
         ),
         'gender' => array(
             'name' => 'gender',
-            'title' => t('Gender'),
+            'label' => t('Gender'),
+            'title' => isset($fieldTitles['gender']) ? $fieldTitles['gender'] : t('Gender'),
             'sort' => isset($selectedFields['gender']) ? $selectedFields['gender'] : $num,
             'checked' => isset($selectedFields['gender']),
             'required' => isset($requiredFields['gender']) ? $requiredFields['gender'] : '',
@@ -283,7 +288,8 @@ function newsletter2go_form($form, &$form_state)
         foreach ($attributesApi['value'] as $atr) {
             $fields[$atr] = array(
                 'name' => $atr,
-                'title' => $atr,
+                'label' => $atr,
+                'title' => isset($fieldTitles[$atr]) ? $fieldTitles[$atr] : $atr,
                 'sort' => isset($selectedFields[$atr]) ? $selectedFields[$atr] : $num,
                 'checked' => isset($selectedFields[$atr]),
                 'required' => isset($requiredFields[$atr]) ? $requiredFields[$atr] : '',
@@ -307,6 +313,15 @@ function newsletter2go_form($form, &$form_state)
         '#suffix' => '</div>',
     );
 
+    $form['widget']['fields']['somethingWidgetDemo'] = array(
+        '#markup' => '<div style="margin-bottom: 15px;"><span class="alert-info">' . t('Attention: ') . '</span>'
+            . t('In Germany, according to German law, it\'s only allowed to set email-address as required!') . '</div>',
+    );
+    $form['widget']['fields']['tableHeader'] = array(
+        '#markup' => '<div style="margin-bottom: 5px;"><span class="n2go-table-header" style="text-align: right;">Newsletter2Go field</span>
+            <span class="n2go-table-header" style="padding-left: 20px;">Title label</span></div>',
+    );
+
     $i = 1;
     foreach ($fields as $field) {
         $key = $field['name'];
@@ -316,13 +331,16 @@ function newsletter2go_form($form, &$form_state)
             '#type' => 'checkbox',
             '#default_value' => $field['checked'],
             '#return_value' => $key,
-            '#title' => $title . ($required ? ' <span class="form-required n2go-required" title="This field is required.">*</span>' : ''),
+            '#title' => $field['label'],
             '#attributes' => array(
                 'class' => array('js-n2go-widget-field'),
                 'title' => array($title),
             ),
             '#prefix' => '<div class="widgetField" draggable="true">',
-            '#suffix' => '<input type="hidden" name="' . $key . 'Sort" value="' . $i++ . '" /><input type="hidden" name="' . $key . 'Required" value="' . $required . '" /></div>',
+            '#suffix' => '<div class="n2go-editable-label">' . $title . ($required ? ' <span class="form-required n2go-required" title="This field is required.">*</span>' : '') .
+                '</div><input type="hidden" name="' . $key . 'Sort" value="' . $i++ . '" />
+                <input type="hidden" name="' . $key . 'Required" value="' . $required . '" />
+                <input type="hidden" name="textFields[' . $key . ']" value="' . $title . '" /></div>',
         );
 
         if ($key === 'email') {
@@ -359,11 +377,6 @@ function newsletter2go_form($form, &$form_state)
             '#title' => t('Failure (required fields)'),
             '#default_value' => empty($texts['failureRequired']) ? t('Please fill all fields.') : $texts['failureGeneral'],
         ),
-        'landingpage' => array(
-            '#type' => 'textfield',
-            '#title' => t('Landing page after confirmation'),
-            '#default_value' => empty($texts['landingpage']) ? '' : $texts['landingpage'],
-        ),
         'buttonText' => array(
             '#type' => 'textfield',
             '#title' => t('Text on button'),
@@ -378,6 +391,16 @@ function newsletter2go_form($form, &$form_state)
         '#type' => 'fieldset',
         '#title' => t('Visual appearance'),
         '#tree' => TRUE,
+        'formBgColor' => array(
+            '#type' => 'textfield',
+            '#title' => t('Background color'),
+            '#default_value' => empty($colors['formBgColor']) ? '' : $colors['formBgColor'],
+            '#size' => 7,
+            '#prefix' => '<div style="float: left;">',
+            '#attributes' => array(
+                'class' => array('js-n2go-widget-field', 'color-picker'),
+            ),
+        ),
         'textColor' => array(
             '#type' => 'textfield',
             '#title' => t('Text color'),
@@ -475,6 +498,7 @@ function newsletter2go_form_submit($form, &$form_state)
 
     variable_set('newsletter2go_fields', $fields);
     variable_set('newsletter2go_required', $requiredFields);
+    variable_set('newsletter2go_titles', $form_state['input']['textFields']);
     variable_set('newsletter2go_texts', $form_state['values']['widget']['texts']);
     variable_set('newsletter2go_colors', $form_state['values']['widget']['colors']);
     variable_set('newsletter2go_widget', $form_state['input']['widgetSourceCode']);
