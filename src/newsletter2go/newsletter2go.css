@@ -1,0 +1,72 @@
+.preview-pane {
+    border: 1px solid #ccc;
+    width: 400px;
+    padding: 15px;
+    height: 300px;
+    position: relative;
+}
+
+.preview-pane iframe {
+    height: 100%;
+}
+
+#widgetSourceCode {
+    font-family: Consolas,Monaco,monospace;
+    font-size: 13px;
+    background: #f9f9f9;
+    outline: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#n2goWidget {
+    position: fixed;
+    top: 50%;
+    margin-top: -215px;
+    margin-bottom: 15px;
+    right: 25px;
+    width: 435px;
+    background-color: #fff;
+    padding: 10px 25px;
+    border: 1px solid #ccc;
+}
+
+@media screen and (max-width: 1070px) {
+    #n2goWidget {
+        float:left;
+        position: relative;
+        top: inherit;
+        margin-top: inherit;
+        right: inherit;
+        background-color: inherit;
+    }
+}
+
+#n2goHeaderConnection {
+    display: table;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.button-pressed{
+    background-position-y: -40px !important;
+}
+
+.widgetField label{
+    cursor: move;
+}
+
+#preview-loading-mask {
+    position: absolute;
+    top: 0;
+    left:0;
+    right:0;
+    bottom:0;
+    text-align: center;
+    padding-top: 135px;
+    background-color: #fff;
+}
+
+.n2go-required {
+    font-weight: 900;
+}
