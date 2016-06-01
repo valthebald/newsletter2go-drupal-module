@@ -6,10 +6,6 @@
     position: relative;
 }
 
-.preview-pane iframe {
-    height: 100%;
-}
-
 #widgetSourceCode {
     font-family: Consolas,Monaco,monospace;
     font-size: 13px;
@@ -123,4 +119,8 @@
     margin: 0 5px;
     font-weight: bold;
     color: #2ea2cc;
+}
+
+.nl2g-hidden{
+    display:none;
 }

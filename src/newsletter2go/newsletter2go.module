@@ -175,37 +175,15 @@ function newsletter2go_init()
 function newsletter2go_form($form, &$form_state)
 {
     $apiKey = variable_get('newsletter2go_apikey');
-    $doiCode = variable_get('newsletter2go_doicode');
-    $selectedFields = variable_get('newsletter2go_fields');
-    $texts = variable_get('newsletter2go_texts');
+    $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
     $colors = variable_get('newsletter2go_colors');
-    $widget = variable_get('newsletter2go_widget');
-    $fieldTitles = variable_get('newsletter2go_titles');
-    $requiredFields = variable_get('newsletter2go_required');
+    $nl2gStylesConfigObject = variable_get('newsletter2go_widgetStyleConfig');
 
-    $attributesApi = executeN2Go('get/attributes', array('key' => $apiKey));
-
-    $doi = executeN2Go('get/form', array('key' => $apiKey, 'doicode' => $doiCode));
-    $attributesApi['doi-success'] = $doi['success'];
-    if ($doi['success']) {
-        $code = rawurldecode($doi['value']['code']);
-        if (strpos($code, '"' . $doiCode . '"')!== false) {
-            $attributesApi['doi-name'] = $doi['value']['host'];
-        }
-    }
-
-    $color = $attributesApi['success'] ? 'greenyellow' : 'yellow';
-    $doiColor = $attributesApi['doi-success'] ? 'greenyellow' : 'yellow';
-
-    //API
     $form['api'] = array(
         '#type' => 'fieldset',
         '#title' => t('Newsletter2Go API'),
         '#tree' => TRUE,
-        'connected' => array(
-            '#markup' => '<h3 id="n2goHeaderConnection" style="background-color: ' . $color . ';">' .
-                ($attributesApi['success'] ? t('Connected!') : t('Not connected yet!')) . '</h3>',
-        ),
+
         'apikey' => array(
             '#type' => 'textfield',
             '#title' => t('API Key'),
@@ -217,20 +195,15 @@ function newsletter2go_form($form, &$form_state)
                 'placeholder' => t('Insert your Newsletter2Go API key'),
             ),
         ),
-        'connectedDOI' => array(
-            '#markup' => '<h3 id="n2goHeaderConnection" style="background-color: ' . $doiColor . ';">' .
-                ($attributesApi['doi-success'] ? t('Valid DOI-Code ( Host: ') . $attributesApi['doi-name'] . ')' :
-                    t('Invalid DOI-Code')) . '</h3>',
-        ),
-        'doicode' => array(
+        'formUniqueCode' => array(
             '#type' => 'textfield',
-            '#title' => t('Double Opt In Code'),
-            '#default_value' => $doiCode,
-            '#description' => t('<a href="https://www.newsletter2go.com/help/managing-recipients/set-up-double-opt-in" target="_blank" >Where do I find the double opt in code?</a>'),
+            '#title' => t('Form Unique Code'),
+            '#default_value' => $formUniqueCode,
+            '#description' => t('<a href="https://www.newsletter2go.com/help/managing-recipients/set-up-double-opt-in" target="_blank" >Where do I find form unique code?</a>'),
             '#size' => 30, 
             '#required' => TRUE,
             '#attributes' => array(
-                'placeholder' => t('Insert your Newsletter2Go DOI Code'),
+                'placeholder' => t('Insert your Form Unique Code'),
             ),
         ),
         'submit' => array(
@@ -242,210 +215,55 @@ function newsletter2go_form($form, &$form_state)
         ),
     );
 
-    //Widget
-    $form['widget'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Configure subscription form'),
-        '#tree' => TRUE,
-    );
-
-    $num = 4 + count($attributesApi['value']);
-    $fields = array(
-        'email' => array(
-            'name' => 'email',
-            'label' => t('E-mail'),
-            'title' => isset($fieldTitles['email']) ? $fieldTitles['email'] : t('E-mail address'),
-            'sort' => isset($selectedFields['email']) ? $selectedFields['email'] : $num,
-            'checked' => true,
-            'required' => 'required',
-        ),
-        'firstname' => array(
-            'name' => 'firstname',
-            'label' => t('First name'),
-            'title' => isset($fieldTitles['firstname']) ? $fieldTitles['firstname'] : t('First name'),
-            'sort' => isset($selectedFields['firstname']) ? $selectedFields['firstname'] : $num,
-            'checked' => isset($selectedFields['firstname']),
-            'required' => isset($requiredFields['firstname']) ? $requiredFields['firstname'] : '',
-        ),
-        'lastname' => array(
-            'name' => 'lastname',
-            'label' => t('Last name'),
-            'title' => isset($fieldTitles['lastname']) ? $fieldTitles['lastname'] : t('Last name'),
-            'sort' => isset($selectedFields['lastname']) ? $selectedFields['lastname'] : $num,
-            'checked' => isset($selectedFields['lastname']),
-            'required' => isset($requiredFields['lastname']) ? $requiredFields['lastname'] : '',
-        ),
-        'gender' => array(
-            'name' => 'gender',
-            'label' => t('Gender'),
-            'title' => isset($fieldTitles['gender']) ? $fieldTitles['gender'] : t('Gender'),
-            'sort' => isset($selectedFields['gender']) ? $selectedFields['gender'] : $num,
-            'checked' => isset($selectedFields['gender']),
-            'required' => isset($requiredFields['gender']) ? $requiredFields['gender'] : '',
-        ),
-    );
-    if ($attributesApi['success']) {
-        foreach ($attributesApi['value'] as $atr) {
-            $fields[$atr] = array(
-                'name' => $atr,
-                'label' => $atr,
-                'title' => isset($fieldTitles[$atr]) ? $fieldTitles[$atr] : $atr,
-                'sort' => isset($selectedFields[$atr]) ? $selectedFields[$atr] : $num,
-                'checked' => isset($selectedFields[$atr]),
-                'required' => isset($requiredFields[$atr]) ? $requiredFields[$atr] : '',
-            );
-        }
-    }
-
-    usort($fields, function($a, $b) {
-        if ($a['sort'] == $b['sort']) {
-            return 0;
-        }
-
-        return $a['sort'] < $b['sort'] ? -1 : 1;
-    });
-
-    $form['widget']['fields'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Which data fields should be visible in your subscription form?'),
-        '#tree' => TRUE,
-        '#prefix' => '<div id="widgetFields">',
-        '#suffix' => '</div>',
-    );
-
-    $form['widget']['fields']['somethingWidgetDemo'] = array(
-        '#markup' => '<div style="margin-bottom: 15px;"><span class="alert-info">' . t('Attention: ') . '</span>'
-            . t('In Germany, according to German law, it\'s only allowed to set email-address as required!') . '</div>',
-    );
-    $form['widget']['fields']['tableHeader'] = array(
-        '#markup' => '<div style="margin-bottom: 5px;"><span class="n2go-table-header" style="text-align: right;">Newsletter2Go field</span>
-            <span class="n2go-table-header" style="padding-left: 20px;">Title label</span></div>',
-    );
-
-    $i = 1;
-    foreach ($fields as $field) {
-        $key = $field['name'];
-        $title = $field['title'];
-        $required = $field['required'];
-        $form['widget']['fields'][$key] = array(
-            '#type' => 'checkbox',
-            '#default_value' => $field['checked'],
-            '#return_value' => $key,
-            '#title' => $field['label'],
-            '#attributes' => array(
-                'class' => array('js-n2go-widget-field'),
-                'title' => array($title),
-            ),
-            '#prefix' => '<div class="widgetField" draggable="true">',
-            '#suffix' => '<div class="n2go-editable-label">' . $title . ($required ? ' <span class="form-required n2go-required" title="This field is required.">*</span>' : '') .
-                '</div><input type="hidden" name="' . $key . 'Sort" value="' . $i++ . '" />
-                <input type="hidden" name="' . $key . 'Required" value="' . $required . '" />
-                <input type="hidden" name="textFields[' . $key . ']" value="' . $title . '" /></div>',
-        );
-
-        if ($key === 'email') {
-            $form['widget']['fields'][$key]['#attributes']['disabled'] = 'true';
-        }
-    }
-
-    $form['widget']['texts'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('General settings'),
-        '#tree' => TRUE,
-        'success' => array(
-            '#type' => 'textfield',
-            '#title' => t('Success'),
-            '#default_value' => empty($texts['success']) ? t('Thank you for signing up. We have sent you an email with a confirmation link. Please check your inbox.') : $texts['success'],
-        ),
-        'failureSubsc' => array(
-            '#type' => 'textfield',
-            '#title' => t('Filure (already subscribed)'),
-            '#default_value' => empty($texts['failureSubsc']) ? t('Thank you for signing up. You are already signed up and will continue to receive our newsletter.') : $texts['failureSubsc'],
-        ),
-        'failureEmail' => array(
-            '#type' => 'textfield',
-            '#title' => t('Failure (wrong email syntax)'),
-            '#default_value' => empty($texts['failureEmail']) ? t('The email address you inserted does not seem to be valid. Please correct it.') : $texts['failureEmail'],
-        ),
-        'failureGeneral' => array(
-            '#type' => 'textfield',
-            '#title' => t('Failure (general error)'),
-            '#default_value' => empty($texts['failureGeneral']) ? t('We were not able to sign you up. Please try again.') : $texts['failureGeneral'],
-        ),
-        'failureRequired' => array(
-            '#type' => 'textfield',
-            '#title' => t('Failure (required fields)'),
-            '#default_value' => empty($texts['failureRequired']) ? t('Please fill all fields.') : $texts['failureGeneral'],
-        ),
-        'buttonText' => array(
-            '#type' => 'textfield',
-            '#title' => t('Text on button'),
-            '#default_value' => empty($texts['buttonText']) ? t('Subscribe now!') : $texts['buttonText'],
-            '#attributes' => array(
-                'class' => array('js-n2go-widget-field'),
-            ),
-        ),
-    );
-
     $form['widget']['colors'] = array(
         '#type' => 'fieldset',
         '#title' => t('Visual appearance'),
         '#tree' => TRUE,
-        'formBgColor' => array(
-            '#type' => 'textfield',
-            '#title' => t('Background color'),
-            '#default_value' => empty($colors['formBgColor']) ? '' : $colors['formBgColor'],
-            '#size' => 7,
-            '#prefix' => '<div style="float: left;">',
-            '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
-            ),
-        ),
-        'textColor' => array(
+        'input.color' => array(
             '#type' => 'textfield',
             '#title' => t('Text color'),
-            '#default_value' => empty($colors['textColor']) ? '' : $colors['textColor'],
+            '#default_value' => empty($colors['input.color']) ? '' : $colors['input.color'],
             '#size' => 7,
             '#prefix' => '<div style="float: left;">',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
-        'borderColor' => array(
+        'input.border' => array(
             '#type' => 'textfield',
             '#title' => t('Input border color'),
-            '#default_value' => empty($colors['borderColor']) ? '' : $colors['borderColor'],
+            '#default_value' => empty($colors['input.border']) ? '' : $colors['input.border'],
             '#size' => 7,
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
-        'bgColor' => array(
+        'input.background-color' => array(
             '#type' => 'textfield',
             '#title' => t('Input background color'),
-            '#default_value' => empty($colors['bgColor']) ? '' : $colors['bgColor'],
+            '#default_value' => empty($colors['input.background-color']) ? '' : $colors['input.background-color'],
             '#size' => 7,
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
-        'btnTextColor' => array(
+        'button.color' => array(
             '#type' => 'textfield',
             '#title' => t('Button text color'),
-            '#default_value' => empty($colors['btnTextColor']) ? '' : $colors['btnTextColor'],
+            '#default_value' => empty($colors['button.color']) ? '' : $colors['button.color'],
             '#size' => 7,
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
-        'btnBgColor' => array(
+        'button.background-color' => array(
             '#type' => 'textfield',
             '#title' => t('Button background color'),
-            '#default_value' => empty($colors['btnBgColor']) ? '' : $colors['btnBgColor'],
+            '#default_value' => empty($colors['button.background-color']) ? '' : $colors['button.background-color'],
             '#size' => 7,
             '#suffix' => '</div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker'),
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
         'colorPicker' => array(
@@ -453,21 +271,34 @@ function newsletter2go_form($form, &$form_state)
         ),
     );
 
+    //////////////////////////////////              Check this code here should be javascript tag find the way how to inject script
     $string = '<div id="n2goWidget">
                     <h3>Here is the preview for you</h3>
                     <input type="button" value="Preview" class="form-submit" id="btnShowPreview" />
                     <input type="button" value="Source Code" class="form-submit" id="btnShowSource" />
-                    <div class="preview-pane">
-                        <iframe id="widgetPreview" style="width: 100%" src="' . url('n2go/widget') . '?widget=' . urlencode($widget) . '"></iframe>
-                        <textarea id="widgetSourceCode" name="widgetSourceCode" style="display: none;"> ' . ($widget ? : '') . '</textarea>
-                            <div id="preview-loading-mask">
-                            <img src="' . url() . drupal_get_path('module', 'newsletter2go') . '/images/ajax-loader.gif" alt="Loading..." />
-                        </div>
+
+                     <script>
+                        !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
+                    </script>
+
+                      <div id="preview-form-panel" class="preview-pane">
+                        <div id="widgetPreview">';
+                        if(isset($formUniqueCode) && trim($formUniqueCode) !== ''){
+
+                            $string .=  '<script id="n2g_script">
+                            </script>';
+                        } else {
+                            $string .= '<h3 class="n2go-error-general">'.$errorMessage.'</h3>';
+                        }
+    $string .=  '</div>
                     </div>
-                    <input type="hidden" value="' . url('n2go/widget') . '" id="widgetPageUrl" />
                     <p>Your subscription form will show up under "blocks". Feel free to place it on any page.</p>
                     <input type="submit" id="edit-submit" name="op" value="Save subscription form" class="form-submit button-pressed" />
-                </div>';
+                </div>
+
+            <div id="nl2gStylesConfigObject" class="nl2g-hidden">'. $nl2gStylesConfigObject. '</div>
+            <div id="formUniqueCode" class="nl2g-hidden">'.$formUniqueCode.'</div>';
+
 
     $form['widget']['somethingWidgetDemo'] = array(
         '#markup' => $string,
@@ -486,22 +317,12 @@ function newsletter2go_form_validate($form, &$form_state)
 function newsletter2go_form_submit($form, &$form_state)
 {
     variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
-    variable_set('newsletter2go_doicode', $form_state['values']['api']['doicode']);
-    $fields = array('email' => $form_state['input']['emailSort']);
-    $requiredFields = array('email' => $form_state['input']['emailRequired']);
-    foreach ($form_state['values']['widget']['fields'] as $key => $value) {
-        if ($value) {
-            $fields[$key] = $form_state['input'][$key . 'Sort'];
-            $requiredFields[$key] = $form_state['input'][$key . 'Required'];
-        }
-    }
+    variable_set('newsletter2go_formUniqueCode', $form_state['values']['api']['formUniqueCode']);
 
-    variable_set('newsletter2go_fields', $fields);
-    variable_set('newsletter2go_required', $requiredFields);
-    variable_set('newsletter2go_titles', $form_state['input']['textFields']);
-    variable_set('newsletter2go_texts', $form_state['values']['widget']['texts']);
-    variable_set('newsletter2go_colors', $form_state['values']['widget']['colors']);
-    variable_set('newsletter2go_widget', $form_state['input']['widgetSourceCode']);
+    isset($form_state['values']['colors']) ?
+            variable_set('newsletter2go_colors', $form_state['values']['colors']) : null;
+    isset($_POST['widgetStyleConfig']) ?
+            variable_set('newsletter2go_widgetStyleConfig', $_POST['widgetStyleConfig']) : null;
 }
 
 /**

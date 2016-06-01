@@ -2,288 +2,248 @@ function n2goPreviewRendered() {
     document.getElementById('preview-loading-mask').style.display = 'none';
 }
 
-window.onload = function (e) {
-    var dragSrcEl = null,
-            farb = jQuery.farbtastic('#colorPicker'),
-            elements = document.getElementsByClassName('js-n2go-widget-field'),
-            i,
-            renderHTML = function () {
-                var widget = document.getElementById('widgetSourceCode'),
-                        view = document.getElementById('widgetPreview');
-                document.getElementById('preview-loading-mask').style.display = 'block';
-                widget.style.display = 'none';
-                view.src = document.getElementById('widgetPageUrl').value + '?widget=' + encodeURIComponent(widget.value);
+window.addEventListener('load', function () {
+    var farb = jQuery.farbtastic('#colorPicker'),
+        renderHTML = function () {
+            window.formUniqueCode = document.getElementById('formUniqueCode').innerHTML.trim();
+            if (formUniqueCode) {
+                var view = document.getElementById('widgetPreview'), formScriptTag;
+                //toggle between config styles and preview to preserve space for rendering
                 view.style.display = 'block';
+                document.getElementById('widgetStyleConfig').style.display = 'none';
+                //end of toggling
 
-                document.getElementById('btnShowPreview').className = 'form-submit button-pressed';
-                document.getElementById('btnShowSource').className = 'form-submit';
-            };
+                formScriptTag = document.getElementById('n2g_script');
+                window.nl2gScriptTagParent = formScriptTag.parentElement;
 
-    function buildWidgetForm(rebuildForm) {
-        var sourceCode = '';
-        if (rebuildForm) {
-            var checkBoxes = document.getElementsByClassName('form-checkbox'),
-                    fields = [], i, elem,
-                    texts, styles, inputStyle;
-
-            for (i = 0; i < checkBoxes.length; i++) {
-                if (checkBoxes[i].checked === true) {
-                    elem = [];
-                    elem['sort'] = document.getElementsByName(checkBoxes[i].value + 'Sort')[0].value;
-                    elem['required'] = document.getElementsByName(checkBoxes[i].value + 'Required')[0].value;
-                    elem['name'] = checkBoxes[i].title;
-                    elem['id'] = checkBoxes[i].value;
-
-                    fields.push(elem);
+                //checking if formScriptTag already exists.If exist,delete it and make another.
+                if (formScriptTag) {
+                    nl2gScriptTagParent.removeChild(formScriptTag);
                 }
+
+                formScriptTag = document.createElement('script');
+                formScriptTag.setAttribute('id', 'n2g_script');
+
+                formScriptTag.innerHTML = "n2g('create',formUniqueCode);n2g('subscribe:createForm',n2gConfig)";
+
+                nl2gScriptTagParent.appendChild(formScriptTag);
+
             }
+        };
 
-            texts = [];
-            texts['button'] = document.getElementById('edit-widget-texts-buttontext').value;
+    function buildWidgetForm() {
+        var nl2gStylesConfigObject = document.getElementById('nl2gStylesConfigObject').innerHTML;
 
-            styles = [];
-            styles['formBgColor'] = document.getElementById('edit-widget-colors-formbgcolor').value;
-            styles['textColor'] = document.getElementById('edit-widget-colors-textcolor').value;
-            styles['borderColor'] = document.getElementById('edit-widget-colors-bordercolor').value;
-            styles['backgroundColor'] = document.getElementById('edit-widget-colors-bgcolor').value;
-            styles['btnTextColor'] = document.getElementById('edit-widget-colors-btntextcolor').value;
-            styles['btnBackgroundColor'] = document.getElementById('edit-widget-colors-btnbgcolor').value;
+        if (nl2gStylesConfigObject.length === 0 || nl2gStylesConfigObject === null || nl2gStylesConfigObject.trim() === "") {
+            //default n2gCongig key
+            n2gConfig = {
+                "form": {
+                    "class": "",
+                    "style": ""
+                },
+                "container": {
+                    "type": "table",
+                    "class": "",
+                    "style": "width: 100%;"
+                },
+                "row": {
+                    "type": "tr",
+                    "class": "",
+                    "style": ""
+                },
+                "columnLeft": {
+                    "type": "td",
+                    "class": "",
+                    "style": "width: 40%; padding: 10px 5px;"
+                },
+                "columnRight": {
+                    "type": "td",
+                    "class": "",
+                    "style": ""
+                },
+                "checkbox": {
+                    "type": "input",
+                    "class": "",
+                    "style": ""
+                },
+                "separator": {
+                    "type": "br",
+                    "class": "",
+                    "style": ""
+                },
+                "input": {
+                    "class": "",
+                    "style": "padding: 5px 10px; border-radius: 2px; border: 1px solid #d8dee4; "
+                },
+                "dropdown": {
+                    "type": "select",
+                    "class": "",
+                    "style": "padding: 3px 5px; border-radius: 2px; border: 1px solid #d8dee4;"
+                },
+                "button": {
+                    "type": "button",
+                    "class": "",
+                    "id": "",
+                    "style": "background-color: #00baff; border: none; border-radius: 4px; padding: 10px 20px; color: #ffffff; margin-top: 20px; cursor: pointer;"
+                },
+                "label": {
+                    "type": "label",
+                    "class": "",
+                    "style": "padding-left: 5px;"
+                },
+                "loader": {
+                    "type": "img",
+                    "src": "//www.newsletter2go.com/images/loader.svg",
+                    "class": "",
+                    "style": "margin:; auto; display:block;"
+                },
+                "message": {
+                    "type": "h2",
+                    "class": "",
+                    "id": "",
+                    "style": "text-align: center;"
+                }
+            };
+        } else {
+            //config from the database
+            n2gConfig = JSON.parse(nl2gStylesConfigObject);
+        }
 
-            fields.sort(function (a, b) {
-                return a['sort'] - b['sort'];
+        //mandatory class for all fields which change n2gConfig - 'nl2g-fields'
+        var fields = document.getElementsByClassName('nl2g-fields');
+
+        //going trough every input field from the configuration page
+            [].forEach.call(document.querySelectorAll('.nl2g-fields'), function (field) {
+                //
+                if(field)
+                var prepareFieldFormat = field.name;
+                var matches = prepareFieldFormat.match(/\[(.*?)\]/);
+
+
+
+                if (typeof(matches[1] !== 'undefined')) {
+                    var fieldName = matches[1];
+                }
+
+
+
+
+                //Setting up all we need for formatting json config file
+                var fieldParts = fieldName.split('.');
+                var fieldTag = fieldParts[0];
+                var cssFieldPropertyValue = fieldParts[1].split(':');
+                var cssFieldProperty = cssFieldPropertyValue[0];
+                var cssFieldValue = field.value;
+                var cssConfigStyle = n2gConfig[fieldTag].style;
+                var cssConfigPropValues = cssConfigStyle.split(';');
+
+                //setting up array for tracking duplicates
+                var duplicates = [];
+
+                //going trough every n2gConfig property value for the comparing purposes
+                cssConfigPropValues.forEach(function (cssConfigPropertyValue, index) {
+                    var cssConfigPropValueSplit = cssConfigPropertyValue.split(':');
+                    var cssConfigProperty = cssConfigPropValueSplit[0];
+
+                    //if first time iterating set up the property we track
+                    if (typeof(duplicates[cssConfigProperty]) === 'undefined') {
+                        //first value is duplicates count, second number is index number for deleting this key-value pair
+                        duplicates[cssConfigProperty] = [0, index];
+                    }
+
+                    duplicates[cssConfigProperty][0]++;
+
+                    //if field value is set and is not empty. we want to delete all cssConfigProperty where field value exists and change it
+
+                    if ((cssConfigProperty === cssFieldProperty && (typeof(cssFieldValue) !== "undefined" && cssFieldValue.trim() !== '') && typeof(cssFieldValue === 'undefined'))) {
+                        delete cssConfigPropValues[index];
+                    }
+
+                    //at the end, we assigning to property with the same name as deleted value of our field
+                    if (index === cssConfigPropValues.length - 1) {
+                        if (typeof(cssFieldValue) !== "undefined" && cssFieldValue.trim() !== '') {
+                            cssConfigPropValues[index + 1] = cssFieldProperty + ":" + cssFieldValue;
+                        } else {
+                            //when we removing duplicates there is possibility that we do not have value to alter it. In that case, we remove every but last duplicate;
+                            duplicates.forEach(function (duplicate, index) {
+                                if (duplicate[0] > 1 && duplicate[0] !== index - 1) {
+                                    delete cssConfigPropValues[1];
+                                }
+                            });
+                        }
+                    }
+                });
+
+                ///reset keys for updating the config element
+                var updatedConfigPropertiesValues = [];
+                for (var i = 0; i < cssConfigPropValues.length; i++) {
+                    if (typeof(cssConfigPropValues[i]) !== "undefined" && cssConfigPropValues[i].trim() !== '') {
+                        updatedConfigPropertiesValues.push(cssConfigPropValues[i].trim());
+                    }
+                }
+                //update config object
+
+
+                n2gConfig[fieldTag].style = updatedConfigPropertiesValues.join(";");
+                n2gConfig[fieldTag].style += ';';
             });
 
-            inputStyle = 'style="';
-            inputStyle += styles['formBgColor'] ? 'background-color:' + styles['formBgColor'] + '; ' : '';
-            inputStyle += styles['textColor'] ? 'color:' + styles['textColor'] + '; ' : '';
-            inputStyle += '" ';
-
-            sourceCode = '<div id="n2goResponseArea" ' + inputStyle + '>';
-            sourceCode += '\n  <form method="post" id="n2goForm">';
-
-            if (styles['borderColor'] || styles['backgroundColor'] || styles['textColor']) {
-                inputStyle = 'style="';
-                inputStyle += styles['borderColor'] ? 'border-color:' + styles['borderColor'] + '; ' : '';
-                inputStyle += styles['backgroundColor'] ? 'background-color:' + styles['backgroundColor'] + '; ' : '';
-                inputStyle += styles['textColor'] ? 'color:' + styles['textColor'] + '; ' : '';
-                inputStyle += '" ';
-            }
-
-            for (i = 0; i < fields.length; i++) {
-                if (fields[i]['name'] === 'Gender') {
-                    sourceCode += '\n    ' + fields[i]['name'] + '<br />\n    ' + '<select ' + inputStyle + 'name="' + fields[i]['id'] + '" ' + fields[i]['required'] + '>';
-                    sourceCode += '\n      <option value=" "></option>';
-                    sourceCode += '\n      <option value="m">Male</option>';
-                    sourceCode += '\n      <option value="f">Female</option>';
-                    sourceCode += '\n    </select><br>';
-                } else {
-                    sourceCode += '\n    ' + fields[i]['name'] + '<br />\n    ' + '<input ' + inputStyle + 'type="text" name="' + fields[i]['id'] + '"' +  fields[i]['required'] + ' /><br />';
-                }
-            }
-
-            sourceCode += '\n    <br />\n    <div class="message"></div>';
-            sourceCode += '\n    <input ';
-            if (styles['btnTextColor'] || styles['btnBackgroundColor']) {
-                sourceCode += 'style="';
-                sourceCode += styles['btnTextColor'] ? 'color:' + styles['btnTextColor'] + ';' : '';
-                sourceCode += styles['btnBackgroundColor'] ? 'background-color:' + styles['btnBackgroundColor'] + ';' : '';
-                sourceCode += '"';
-            }
-
-            sourceCode += ' id="n2goButton" type="button" value="' + texts['button'] + '" onClick="n2goAjaxFormSubmit();" class="form-submit" />\n  </form>\n</div>';
-            document.getElementById('widgetSourceCode').innerHTML = sourceCode;
-            document.getElementById('widgetSourceCode').value = sourceCode;
+        //update the config form widget
+        var configStylesTag = document.getElementById('widgetStyleConfig');
+        if (configStylesTag !== null) {
+            var parent = configStylesTag.parentElement;
+            parent.removeChild(configStylesTag);
         }
+
+        var widgetStyleConfig = document.createElement('textarea');
+        widgetStyleConfig.id = 'widgetStyleConfig';
+        widgetStyleConfig.name = 'widgetStyleConfig';
+
+        widgetStyleConfig.style.display = 'none';
+        widgetStyleConfig.style.overflowY = 'auto';
+        widgetStyleConfig.style.width= 'inherit';
+        widgetStyleConfig.style.height = 'inherit';
+        widgetStyleConfig.innerHTML = JSON.stringify(n2gConfig, null, 4);
+        widgetStyleConfig.value = JSON.stringify(n2gConfig, null, 4);
+        document.getElementById('preview-form-panel').appendChild(widgetStyleConfig);
 
         renderHTML();
     }
 
-    function extractValues(elem) {
-        return {
-            valueRequired: elem.children[3].value,
-            id: elem.children[0].children[0].id,
-            name: elem.children[0].children[0].name,
-            value: elem.children[0].children[0].value,
-            title: elem.children[0].children[0].title,
-            checked: elem.children[0].children[0].checked,
-            disabled: elem.children[0].children[0].disabled,
-            label: elem.children[0].children[1].innerHTML,
-            displayLabel: elem.children[1].innerHTML
-        };
-    }
-
-    function importValues(elem, values) {
-        elem.children[1].innerHTML = values.displayLabel;
-        elem.children[2].name = values.value + 'Sort';
-        elem.children[3].name = values.value + 'Required';
-        elem.children[3].value = values.valueRequired;
-        elem.children[4].name = 'textFields[' + values.value + ']';
-        elem.children[4].value = values.title;
-        elem.children[0].children[0].id = values.id;
-        elem.children[0].children[0].name = values.name;
-        elem.children[0].children[0].value = values.value;
-        elem.children[0].children[0].title = values.title;
-        elem.children[0].children[0].checked = values.checked;
-        elem.children[0].children[0].disabled = values.disabled;
-        elem.children[0].children[1].htmlFor = values.id;
-        elem.children[0].children[1].innerHTML = values.label;
-    }
-
-    function handleDragStart(e) {
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('Text', JSON.stringify(extractValues(this)));
-    }
-
-    function handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        e.preventDefault();
-        this.classList.add('over');
-    }
-
-    function handleDragLeave(e) {
-        e.preventDefault();
-        this.classList.remove('over');
-    }
-
-    function handleDrop(e) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (dragSrcEl !== this) {
-            var a = JSON.parse(e.dataTransfer.getData('Text'));
-            var b = extractValues(this);
-            importValues(dragSrcEl, b);
-            importValues(this, a);
-        }
-
-        return false;
-    }
-
-    function handleDragEnd(e) {
-        [].forEach.call(document.querySelectorAll('#widgetFields .widgetField'), function (field) {
-            field.classList.remove('over');
-        });
-
-        buildWidgetForm(true);
-    }
-
-    function transformToEditBox(e) {
-        var me = this,
-            parent = me.parentNode,
-            textField = document.createElement('input'),
-            oldText = me.textContent.replace('*', '').trim();
-
-        textField.type = 'text';
-        textField.value = oldText;
-        textField.addEventListener('blur', function(){
-            var val = this.value;
-
-            parent.draggable = true;
-            val = val ? val : oldText;
-            if (oldText === val) {
-                parent.replaceChild(me, this);
-                return true;
-            }
-
-            parent.children[0].children[0].title = val;
-            parent.children[4].value = val;
-            me.innerHTML = me.innerHTML.replace(oldText, val);
-
-            parent.replaceChild(me, this);
-            buildWidgetForm(true);
-        }, false);
-
-        parent.replaceChild(textField, me);
-        parent.draggable = false;
-        textField.focus();
-
-        e.preventDefault();
-        return false;
-    }
-
-    [].forEach.call(document.querySelectorAll('#widgetFields .widgetField'), function (field) {
-        field.addEventListener('dragstart', handleDragStart, false);
-        field.addEventListener('dragenter', handleDragEnter, false);
-        field.addEventListener('dragover', handleDragOver, false);
-        field.addEventListener('dragleave', handleDragLeave, false);
-        field.addEventListener('drop', handleDrop, false);
-        field.addEventListener('dragend', handleDragEnd, false);
-    });
-
-    [].forEach.call(document.querySelectorAll('.n2go-editable-label'), function (field) {
-        field.addEventListener('click', transformToEditBox, false);
-    });
-
-    buildWidgetForm(true);
-
+    // events for toggling between html form and config json object
     document.getElementById('btnShowSource').onclick = function () {
-        var view = document.getElementById('widgetSourceCode');
+        var view = document.getElementById('widgetStyleConfig');
         view.style.display = 'block';
         document.getElementById('widgetPreview').style.display = 'none';
-        this.className = 'form-submit button-pressed';
-        document.getElementById('btnShowPreview').className = 'form-submit';
+        //document.getElementById('btnShowPreview').className = 'button-pressed';
     };
 
-    document.getElementById('btnShowPreview').onclick = function(){
-        renderHTML();
-    };
+    document.getElementById('btnShowPreview').addEventListener('click', renderHTML);
 
-    function hookClickHandler(checkbox) {
-        checkbox.onclick = function (e) {
-            var grandparent = this.parentElement.parentElement,
-                hiddenReq = grandparent.children[3];
+    // events for triggering changing the color
 
-            if (!this.checked) {
-                if (hiddenReq.value === 'required') {
-                    e.preventDefault();
-                    this.checked = true;
-                    hiddenReq.value = '';
-                    grandparent.children[1].innerHTML = this.title;
-                    buildWidgetForm();
-
-                    return false;
-                }
-            } else {
-                hiddenReq.value = 'required';
-                grandparent.children[1].innerHTML += ' <span class="form-required n2go-required" title="This field is required.">*</span>';
-            }
-        };
-    }
-
-    for (i = 0; i < elements.length; i++) {
-        if (elements[i].type === 'checkbox') {
-            hookClickHandler(elements[i]);
-        }
-
-        elements[i].onchange = function () {
-            buildWidgetForm(true);
-        };
-    }
-
-    jQuery('.color-picker').focus(function() {
+    jQuery('.color-picker').focus(function () {
         var input = this;
 
         // reset to start position before linking to current input
-        farb.linkTo(function(){}).setColor('#000');
+        farb.linkTo(function () {
+        }).setColor('#000');
         farb.linkTo(function (color) {
             input.style.backgroundColor = color;
             input.style.color = farb.RGBToHSL(farb.unpack(color))[2] > 0.5 ? '#000' : '#fff';
             input.value = color;
+
         }).setColor(input.value);
     }).blur(function () {
-        farb.linkTo(function(){}).setColor('#000');
+        farb.linkTo(function () {
+        }).setColor('#000');
         if (!this.value) {
             this.style.backgroundColor = '';
             this.style.color = '';
         }
 
-        buildWidgetForm(true);
+        buildWidgetForm();
     });
-};
+
+    buildWidgetForm();
+});
