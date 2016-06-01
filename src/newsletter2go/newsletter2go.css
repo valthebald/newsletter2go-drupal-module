@@ -6,10 +6,6 @@
     position: relative;
 }
 
-.preview-pane iframe {
-    height: 100%;
-}
-
 #widgetSourceCode {
     font-family: Consolas,Monaco,monospace;
     font-size: 13px;
@@ -123,4 +119,30 @@
     margin: 0 5px;
     font-weight: bold;
     color: #2ea2cc;
+}
+
+.nl2g-hidden{
+    display:none;
+}
+
+.n2go-error-general {
+    color:red;border:red 2px solid;padding:10px 3px;
+}
+
+
+#widgetStyleConfig {
+    font-family: Consolas,Monaco,monospace;
+    padding: 0;
+    font-size: 12px;
+    background: #f9f9f9;
+    outline: 0;
+    display: none;
+    overflow-y: auto;
+    width: 100%;
+    min-height: 300px;
+}
+
+.btn-nl2go {
+    float: right;
+    cursor: none;
 }
