@@ -182,12 +182,6 @@ function newsletter2go_init()
 
 function newsletter2go_form($form, &$form_state)
 {
-
-
-
-    $hookTokens = hook_token_info();
-    var_damp($hookTokens);die();
-
     $apiKey = variable_get('newsletter2go_apikey');
     $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
     $nl2gStylesConfigObject = variable_get('newsletter2go_widgetStyleConfig');
