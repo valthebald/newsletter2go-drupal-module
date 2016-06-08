@@ -182,9 +182,19 @@ function newsletter2go_init()
 
 function newsletter2go_form($form, &$form_state)
 {
+
+
+
+    $hookTokens = hook_token_info();
+    var_damp($hookTokens);die();
+
     $apiKey = variable_get('newsletter2go_apikey');
     $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
     $nl2gStylesConfigObject = variable_get('newsletter2go_widgetStyleConfig');
+
+    $response = executeN2Go('get/attributes', array('key' => $apiKey));
+    $color = $response['success'] ? 'greenyellow' : 'yellow';
+
 
     if (!strlen($formUniqueCode) > 0) {
         $errorMessage = "Please, enter the form unique code!";
@@ -194,6 +204,10 @@ function newsletter2go_form($form, &$form_state)
         '#type' => 'fieldset',
         '#title' => t('Newsletter2Go API'),
         '#tree' => TRUE,
+        'connected' => array(
+          '#markup' => '<h3 id="n2goHeaderConnection" style="background-color: ' . $color . ';">' .
+              ($response['success'] ? t('Connected!') : t('Not connected yet!')) . '</h3>',
+        ),
 
         'apikey' => array(
             '#type' => 'textfield',
