@@ -1,249 +1,152 @@
 function n2goPreviewRendered() {
     document.getElementById('preview-loading-mask').style.display = 'none';
 }
-
 window.addEventListener('load', function () {
-    var farb = jQuery.farbtastic('#colorPicker'),
-        renderHTML = function () {
-            window.formUniqueCode = document.getElementById('formUniqueCode').innerHTML.trim();
-            if (formUniqueCode) {
-                var view = document.getElementById('widgetPreview'), formScriptTag;
-                //toggle between config styles and preview to preserve space for rendering
-                view.style.display = 'block';
-                document.getElementById('widgetStyleConfig').style.display = 'none';
-                //end of toggling
+    var formUniqueCode = document.getElementById('formUniqueCode').value.trim(),
+        widgetPreview = document.getElementById('widgetPreview');
 
-                formScriptTag = document.getElementById('n2g_script');
-                window.nl2gScriptTagParent = formScriptTag.parentElement;
-
-                //checking if formScriptTag already exists.If exist,delete it and make another.
-                if (formScriptTag) {
-                    nl2gScriptTagParent.removeChild(formScriptTag);
+    if (formUniqueCode) {
+        var picker = jQuery.farbtastic('#colorPicker'),
+            widgetStyleConfig = document.getElementById('widgetStyleConfig'),
+            input,
+            timer = 0,
+            n2gSetUp = function  () {
+                if (widgetStyleConfig.textContent === null || widgetStyleConfig.textContent.trim() === "") {
+                    widgetStyleConfig.textContent = JSON.stringify(n2gConfig, null, 2);
+                } else {
+                    n2gConfig = JSON.parse(widgetStyleConfig.textContent);
                 }
 
-                formScriptTag = document.createElement('script');
-                formScriptTag.setAttribute('id', 'n2g_script');
-
-                formScriptTag.innerHTML = "n2g('create',formUniqueCode);n2g('subscribe:createForm',n2gConfig)";
-
-                nl2gScriptTagParent.appendChild(formScriptTag);
-
-            }
-        };
-
-    function buildWidgetForm() {
-        var nl2gStylesConfigObject = document.getElementById('nl2gStylesConfigObject').innerHTML;
-
-        if (nl2gStylesConfigObject.length === 0 || nl2gStylesConfigObject === null || nl2gStylesConfigObject.trim() === "") {
-            //default n2gCongig key
-            n2gConfig = {
-                "form": {
-                    "class": "",
-                    "style": ""
-                },
-                "container": {
-                    "type": "table",
-                    "class": "",
-                    "style": "width: 100%;"
-                },
-                "row": {
-                    "type": "tr",
-                    "class": "",
-                    "style": ""
-                },
-                "columnLeft": {
-                    "type": "td",
-                    "class": "",
-                    "style": "width: 40%; padding: 10px 5px;"
-                },
-                "columnRight": {
-                    "type": "td",
-                    "class": "",
-                    "style": ""
-                },
-                "checkbox": {
-                    "type": "input",
-                    "class": "",
-                    "style": ""
-                },
-                "separator": {
-                    "type": "br",
-                    "class": "",
-                    "style": ""
-                },
-                "input": {
-                    "class": "",
-                    "style": "padding: 5px 10px; border-radius: 2px; border: 1px solid #d8dee4; "
-                },
-                "dropdown": {
-                    "type": "select",
-                    "class": "",
-                    "style": "padding: 3px 5px; border-radius: 2px; border: 1px solid #d8dee4;"
-                },
-                "button": {
-                    "type": "button",
-                    "class": "",
-                    "id": "",
-                    "style": "background-color: #00baff; border: none; border-radius: 4px; padding: 10px 20px; color: #ffffff; margin-top: 20px; cursor: pointer;"
-                },
-                "label": {
-                    "type": "label",
-                    "class": "",
-                    "style": "padding-left: 5px;"
-                },
-                "loader": {
-                    "type": "img",
-                    "src": "//www.newsletter2go.com/images/loader.svg",
-                    "class": "",
-                    "style": "margin:; auto; display:block;"
-                },
-                "message": {
-                    "type": "h2",
-                    "class": "",
-                    "id": "",
-                    "style": "text-align: center;"
-                }
-            };
-        } else {
-            //config from the database
-            n2gConfig = JSON.parse(nl2gStylesConfigObject);
-        }
-
-        //mandatory class for all fields which change n2gConfig - 'nl2g-fields'
-        var fields = document.getElementsByClassName('nl2g-fields');
-
-        //going trough every input field from the configuration page
-            [].forEach.call(document.querySelectorAll('.nl2g-fields'), function (field) {
-                //
-                if(field)
-                var prepareFieldFormat = field.name;
-                var matches = prepareFieldFormat.match(/\[(.*?)\]/);
+                [].forEach.call(document.getElementsByClassName('nl2g-fields'), function (element) {
 
 
+                    var field = element.id.split('.');
+                    var style = getStyle(field[1], n2gConfig[field[0]]['style']);
 
-                if (typeof(matches[1] !== 'undefined')) {
-                    var fieldName = matches[1];
-                }
-
-
-
-
-                //Setting up all we need for formatting json config file
-                var fieldParts = fieldName.split('.');
-                var fieldTag = fieldParts[0];
-                var cssFieldPropertyValue = fieldParts[1].split(':');
-                var cssFieldProperty = cssFieldPropertyValue[0];
-                var cssFieldValue = field.value;
-                var cssConfigStyle = n2gConfig[fieldTag].style;
-                var cssConfigPropValues = cssConfigStyle.split(';');
-
-                //setting up array for tracking duplicates
-                var duplicates = [];
-
-                //going trough every n2gConfig property value for the comparing purposes
-                cssConfigPropValues.forEach(function (cssConfigPropertyValue, index) {
-                    var cssConfigPropValueSplit = cssConfigPropertyValue.split(':');
-                    var cssConfigProperty = cssConfigPropValueSplit[0];
-
-                    //if first time iterating set up the property we track
-                    if (typeof(duplicates[cssConfigProperty]) === 'undefined') {
-                        //first value is duplicates count, second number is index number for deleting this key-value pair
-                        duplicates[cssConfigProperty] = [0, index];
-                    }
-
-                    duplicates[cssConfigProperty][0]++;
-
-                    //if field value is set and is not empty. we want to delete all cssConfigProperty where field value exists and change it
-
-                    if ((cssConfigProperty === cssFieldProperty && (typeof(cssFieldValue) !== "undefined" && cssFieldValue.trim() !== '') && typeof(cssFieldValue === 'undefined'))) {
-                        delete cssConfigPropValues[index];
-                    }
-
-                    //at the end, we assigning to property with the same name as deleted value of our field
-                    if (index === cssConfigPropValues.length - 1) {
-                        if (typeof(cssFieldValue) !== "undefined" && cssFieldValue.trim() !== '') {
-                            cssConfigPropValues[index + 1] = cssFieldProperty + ":" + cssFieldValue;
-                        } else {
-                            //when we removing duplicates there is possibility that we do not have value to alter it. In that case, we remove every but last duplicate;
-                            duplicates.forEach(function (duplicate, index) {
-                                if (duplicate[0] > 1 && duplicate[0] !== index - 1) {
-                                    delete cssConfigPropValues[1];
-                                }
-                            });
-                        }
+                    element.value = element.style.backgroundColor = style;
+                    if (element.value !== '') {
+                        element.style.color = picker.RGBToHSL(picker.unpack(element.value))[2] > 0.5 ? '#000' : '#fff';
                     }
                 });
+            };
 
-                ///reset keys for updating the config element
-                var updatedConfigPropertiesValues = [];
-                for (var i = 0; i < cssConfigPropValues.length; i++) {
-                    if (typeof(cssConfigPropValues[i]) !== "undefined" && cssConfigPropValues[i].trim() !== '') {
-                        updatedConfigPropertiesValues.push(cssConfigPropValues[i].trim());
-                    }
+        function getStyle (field, str) {
+            var styleArray = str.split(';');
+
+            for (var i=0; i < styleArray.length; i++){
+                var styleField = styleArray[i].split(':');
+                if (styleField[0] == field) {
+                    return styleField[1];
                 }
-                //update config object
+            }
+            return '';
+        }
 
+        function updateConfig (element) {
+            widgetStyleConfig.textContent = '';
+            var formPropertyArray = element.id.split('.'),
+                property = formPropertyArray[0],
+                attribute = 'style',
+                cssProperty = formPropertyArray[1],
+                cssValue = element.value;
 
-                n2gConfig[fieldTag].style = updatedConfigPropertiesValues.join(";");
-                n2gConfig[fieldTag].style += ';';
+            var styleProperties;
+            if (n2gConfig[property][attribute] == '') {
+                styleProperties = cssProperty + ':' + cssValue;
+            } else {
+                styleProperties = updateString(n2gConfig[property][attribute], cssProperty, cssValue);
+            }
+
+            n2gConfig[property][attribute] = styleProperties;
+            widgetStyleConfig.textContent = JSON.stringify(n2gConfig, null, 2);
+        }
+
+        function updateForm () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                document.getElementById('n2g_form').remove();
+                n2g('subscribe:createForm', n2gConfig);
+            }, 100);
+        }
+
+        function updateString (string, cssProperty, cssValue) {
+            var stylePropertiesArray = string.split(';'),
+                found = false,
+                updatedString;
+            // todo
+            for (var i = 0; i < stylePropertiesArray.length-1; i++) {
+                var trimmedAttr = stylePropertiesArray[i].trim();
+                var styleProperty = trimmedAttr.split(':');
+                if (styleProperty[0] == cssProperty) {
+                    styleProperty[1] = cssValue;
+                    stylePropertiesArray[i] = styleProperty[0] + ':' + styleProperty[1];
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                stylePropertiesArray[i] = cssProperty + ':' + cssValue;
+            }
+
+            updatedString = stylePropertiesArray.join(';');
+
+            if(updatedString.slice(-1) !== ';'){
+                updatedString+=';';
+            }
+
+            return updatedString;
+        }
+
+        function show () {
+            switch(this.id) {
+                case 'btnShowConfig':
+                    widgetStyleConfig.style.display = 'block';
+                    widgetPreview.style.display = 'none';
+                    break;
+                default:
+                    widgetPreview.style.display = 'block';
+                    widgetStyleConfig.style.display = 'none';
+            }
+            this.className = 'form-submit btn-nl2go';
+            [].forEach.call(jQuery('#'+this.id).siblings(), function(button) {
+                button.className = 'form-submit';
             });
-
-        //update the config form widget
-        var configStylesTag = document.getElementById('widgetStyleConfig');
-        if (configStylesTag !== null) {
-            var parent = configStylesTag.parentElement;
-            parent.removeChild(configStylesTag);
         }
 
-        var widgetStyleConfig = document.createElement('textarea');
-        widgetStyleConfig.id = 'widgetStyleConfig';
-        widgetStyleConfig.name = 'widgetStyleConfig';
+        jQuery('.color-picker').focus(function () {
+            input = this;
+            picker.linkTo(function () {}).setColor('#000');
+            picker.linkTo(function (color) {
+                input.style.backgroundColor = color;
+                input.style.color = picker.RGBToHSL(picker.unpack(color))[2] > 0.5 ? '#000' : '#fff';
+                input.value = color;
 
-        widgetStyleConfig.style.display = 'none';
-        widgetStyleConfig.style.overflowY = 'auto';
-        widgetStyleConfig.style.width= 'inherit';
-        widgetStyleConfig.style.height = 'inherit';
-        widgetStyleConfig.innerHTML = JSON.stringify(n2gConfig, null, 4);
-        widgetStyleConfig.value = JSON.stringify(n2gConfig, null, 4);
-        document.getElementById('preview-form-panel').appendChild(widgetStyleConfig);
+                updateConfig(input);
+                updateForm();
 
-        renderHTML();
+            }).setColor(input.value);
+        }).blur(function () {
+            picker.linkTo(function () {}).setColor('#000');
+            if (!input.value) {
+                input.style.backgroundColor = '';
+                input.style.color = '';
+            }
+            updateConfig(input);
+            updateForm();
+        });
+
+        n2gSetUp();
+
+        n2g('create', formUniqueCode);
+        n2g('subscribe:createForm', n2gConfig);
+
+        [].forEach.call(document.getElementById('n2gButtons').children, function (button) {
+            button.addEventListener('click', show);
+        });
+
+        document.getElementById('colorPicker').addEventListener('click', function () {
+            input && input.focus();
+        });
+
     }
-
-    // events for toggling between html form and config json object
-    document.getElementById('btnShowSource').onclick = function () {
-        var view = document.getElementById('widgetStyleConfig');
-        view.style.display = 'block';
-        document.getElementById('widgetPreview').style.display = 'none';
-        //document.getElementById('btnShowPreview').className = 'button-pressed';
-    };
-
-    document.getElementById('btnShowPreview').addEventListener('click', renderHTML);
-
-    // events for triggering changing the color
-
-    jQuery('.color-picker').focus(function () {
-        var input = this;
-
-        // reset to start position before linking to current input
-        farb.linkTo(function () {
-        }).setColor('#000');
-        farb.linkTo(function (color) {
-            input.style.backgroundColor = color;
-            input.style.color = farb.RGBToHSL(farb.unpack(color))[2] > 0.5 ? '#000' : '#fff';
-            input.value = color;
-
-        }).setColor(input.value);
-    }).blur(function () {
-        farb.linkTo(function () {
-        }).setColor('#000');
-        if (!this.value) {
-            this.style.backgroundColor = '';
-            this.style.color = '';
-        }
-
-        buildWidgetForm();
-    });
-
-    buildWidgetForm();
 });

@@ -16,8 +16,15 @@ function newsletter2go_block_view($delta = '')
 
     switch ($delta) {
         case 'newsletter2go':
+            $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
+            $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
+
             $block['subject'] = t('Newsletter2Go');
-            $block['content'] = variable_get('newsletter2go_widget');
+            $block['content'] = '<script id="n2g_script">
+    !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
+    n2g(\'create\',\''.$formUniqueCode.'\');
+    n2g(\'subscribe:createForm\','.$n2gConfig.');
+            </script>';
     }
 
     return $block;
@@ -159,6 +166,7 @@ function newsletter2go_init()
 {
     $path = drupal_get_path('module', 'newsletter2go');
     if (arg(0) == 'admin') {
+        drupal_add_js($path . '/newsletter2go_default.js');
         drupal_add_js($path . '/newsletter2go.js');
         drupal_add_js('misc/farbtastic/farbtastic.js');
         drupal_add_css('misc/farbtastic/farbtastic.css');
@@ -176,8 +184,11 @@ function newsletter2go_form($form, &$form_state)
 {
     $apiKey = variable_get('newsletter2go_apikey');
     $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
-    $colors = variable_get('newsletter2go_colors');
     $nl2gStylesConfigObject = variable_get('newsletter2go_widgetStyleConfig');
+
+    if (!strlen($formUniqueCode) > 0) {
+        $errorMessage = "Please, enter the form unique code!";
+    }
 
     $form['api'] = array(
         '#type' => 'fieldset',
@@ -196,12 +207,12 @@ function newsletter2go_form($form, &$form_state)
             ),
         ),
         'formUniqueCode' => array(
+            '#id' => 'formUniqueCode',
             '#type' => 'textfield',
             '#title' => t('Form Unique Code'),
             '#default_value' => $formUniqueCode,
             '#description' => t('<a href="https://www.newsletter2go.com/help/managing-recipients/set-up-double-opt-in" target="_blank" >Where do I find form unique code?</a>'),
-            '#size' => 30, 
-            '#required' => TRUE,
+            '#size' => 30,
             '#attributes' => array(
                 'placeholder' => t('Insert your Form Unique Code'),
             ),
@@ -219,47 +230,68 @@ function newsletter2go_form($form, &$form_state)
         '#type' => 'fieldset',
         '#title' => t('Visual appearance'),
         '#tree' => TRUE,
-        'input.color' => array(
+
+        'form.background-color' => array(
+            '#id' =>'form.background-color',
             '#type' => 'textfield',
-            '#title' => t('Text color'),
-            '#default_value' => empty($colors['input.color']) ? '' : $colors['input.color'],
+            '#title' => t('Form background color'),
             '#size' => 7,
             '#prefix' => '<div style="float: left;">',
             '#attributes' => array(
                 'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
-        'input.border' => array(
+        'label.color' => array(
+            '#id' =>'label.color',
+            '#type' => 'textfield',
+            '#title' => t('Label color'),
+            '#size' => 7,
+            '#prefix' => '<div style="float: left;">',
+            '#attributes' => array(
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+            ),
+        ),
+        'input.color' => array(
+            '#id' =>'input.color',
+            '#type' => 'textfield',
+            '#title' => t('Input color'),
+            '#size' => 7,
+            '#prefix' => '<div style="float: left;">',
+            '#attributes' => array(
+                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+            ),
+        ),
+        'input.border-color' => array(
+            '#id' =>'input.border-color',
             '#type' => 'textfield',
             '#title' => t('Input border color'),
-            '#default_value' => empty($colors['input.border']) ? '' : $colors['input.border'],
             '#size' => 7,
             '#attributes' => array(
                 'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
         'input.background-color' => array(
+            '#id' =>'input.background-color',
             '#type' => 'textfield',
             '#title' => t('Input background color'),
-            '#default_value' => empty($colors['input.background-color']) ? '' : $colors['input.background-color'],
             '#size' => 7,
             '#attributes' => array(
                 'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
         'button.color' => array(
+            '#id' =>'button.color',
             '#type' => 'textfield',
             '#title' => t('Button text color'),
-            '#default_value' => empty($colors['button.color']) ? '' : $colors['button.color'],
             '#size' => 7,
             '#attributes' => array(
                 'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
             ),
         ),
         'button.background-color' => array(
+            '#id' =>'button.background-color',
             '#type' => 'textfield',
             '#title' => t('Button background color'),
-            '#default_value' => empty($colors['button.background-color']) ? '' : $colors['button.background-color'],
             '#size' => 7,
             '#suffix' => '</div>',
             '#attributes' => array(
@@ -271,12 +303,12 @@ function newsletter2go_form($form, &$form_state)
         ),
     );
 
-    //////////////////////////////////              Check this code here should be javascript tag find the way how to inject script
     $string = '<div id="n2goWidget">
                     <h3>Here is the preview for you</h3>
-                    <input type="button" value="Preview" class="form-submit" id="btnShowPreview" />
-                    <input type="button" value="Source Code" class="form-submit" id="btnShowSource" />
-
+                    <div id="n2gButtons">
+                    <input type="button" value="Preview" class="form-submit btn-nl2go" id="btnShowPreview" />
+                    <input type="button" value="Configure Styles" class="form-submit " id="btnShowConfig" />
+                    </div>
                      <script>
                         !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
                     </script>
@@ -291,14 +323,11 @@ function newsletter2go_form($form, &$form_state)
                             $string .= '<h3 class="n2go-error-general">'.$errorMessage.'</h3>';
                         }
     $string .=  '</div>
+                    <textarea id="widgetStyleConfig" name="widgetStyleConfig">'.$nl2gStylesConfigObject.'</textarea>
                     </div>
                     <p>Your subscription form will show up under "blocks". Feel free to place it on any page.</p>
                     <input type="submit" id="edit-submit" name="op" value="Save subscription form" class="form-submit button-pressed" />
-                </div>
-
-            <div id="nl2gStylesConfigObject" class="nl2g-hidden">'. $nl2gStylesConfigObject. '</div>
-            <div id="formUniqueCode" class="nl2g-hidden">'.$formUniqueCode.'</div>';
-
+                </div>';
 
     $form['widget']['somethingWidgetDemo'] = array(
         '#markup' => $string,
