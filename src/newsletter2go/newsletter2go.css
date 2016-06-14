@@ -146,3 +146,13 @@
     float: right;
     cursor: none;
 }
+
+#n2g_container * {
+    box-sizing: border-box;
+}
+#n2g_container td {
+    padding: 0 5px;
+}
+#n2g_container td input.n2g_form_inputs, #n2g_container td select {
+    width:100%;
+}

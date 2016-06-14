@@ -10,7 +10,7 @@ function newsletter2go_block_info()
     return $blocks;
 }
 
-function newsletter2go_block_view($delta = '')
+function newsletter2go_block_view($delta = '', $func = 'createForm')
 {
     $block = array();
 
@@ -19,12 +19,24 @@ function newsletter2go_block_view($delta = '')
             $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
             $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
 
+            /*$config = json_decode($n2gConfig, true);/*
+            $config['form']['id'] = 'n2g_f_' . rand(0,100);
+            $config['form']['class'] = 'n2g_f_' . rand(0,100);
+            $config['container']['id'] = 'n2g_c_' . rand(0,100);
+            $config['container']['class'] = 'n2g_c_' . rand(0,100);
+            $n2gConfig = json_encode($config);*/
+
+            $params = "'subscribe:$func', " . $n2gConfig;
+            if ($func == 'createPopup') {
+                $params .= ", 5"; // '5' seconds delay
+            }
+
             $block['subject'] = t('Newsletter2Go');
             $block['content'] = '<script id="n2g_script">
-    !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
-    n2g(\'create\',\''.$formUniqueCode.'\');
-    n2g(\'subscribe:createForm\','.$n2gConfig.');
-            </script>';
+                !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
+                n2g(\'create\',\''.$formUniqueCode.'\');
+                n2g(' . $params . ');
+                        </script>';
     }
 
     return $block;
@@ -165,7 +177,7 @@ function _ajax_newsletter2go_page()
 function newsletter2go_init()
 {
     $path = drupal_get_path('module', 'newsletter2go');
-    if (arg(0) == 'admin') {
+    if (arg(0) == 'admin' && arg(3) == 'newsletter2go') {
         drupal_add_js($path . '/newsletter2go_default.js');
         drupal_add_js($path . '/newsletter2go.js');
         drupal_add_js('misc/farbtastic/farbtastic.js');
@@ -389,4 +401,57 @@ function executeN2Go($action, $post)
     curl_close($cURL);
 
     return json_decode($response, true);
+}
+
+/**
+ * Registers tokens.
+ */
+function newsletter2go_token_info()
+{
+    $info = array();
+    // Define token type
+    $info['types']['newsletter2go'] = array(
+        'name' => t('Newsletter2Go'),
+        'description' => t('Tokens related to Newsletter2Go.'),
+    );
+    // Define token [newsletter2go:plugin']
+    $info['tokens']['newsletter2go']['plugin'] = array(
+        'name' => t('Show as plugin'),
+        'description' => t('Embed subscription form in content.'),
+    );
+    // Define token [newsletter2go:popup']
+    $info['tokens']['newsletter2go']['popup'] = array(
+        'name' => t('Show as popup'),
+        'description' => t('Show subscription form as popup on page (modal window).'),
+    );
+
+    return $info;
+}
+
+/**
+ * Implements hook_tokens().
+ */
+function newsletter2go_tokens($type, $tokens, array $data = array(), array $options = array())
+{
+    $replacements = array();
+
+    if ($type == 'newsletter2go') {
+        foreach ($tokens as $name => $original) {
+            switch ($name) {
+                case 'plugin':
+                    $block = newsletter2go_block_view($type);
+                    break;
+                case 'popup':
+                    $block = newsletter2go_block_view($type, 'createPopup');
+                    break;
+                default:
+                    $block['content'] = "<p style='color:red;'>Wrong short code parameter <b>$name</b> - should be 'plugin' or 'popup'</p>";
+            }
+
+            $replacements[$original] = $block['content'];
+        }
+
+    }
+
+    return $replacements;
 }
