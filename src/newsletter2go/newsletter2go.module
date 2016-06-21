@@ -19,13 +19,6 @@ function newsletter2go_block_view($delta = '', $func = 'createForm')
             $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
             $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
 
-            /*$config = json_decode($n2gConfig, true);/*
-            $config['form']['id'] = 'n2g_f_' . rand(0,100);
-            $config['form']['class'] = 'n2g_f_' . rand(0,100);
-            $config['container']['id'] = 'n2g_c_' . rand(0,100);
-            $config['container']['class'] = 'n2g_c_' . rand(0,100);
-            $n2gConfig = json_encode($config);*/
-
             $params = "'subscribe:$func', " . $n2gConfig;
             if ($func == 'createPopup') {
                 $params .= ", 5"; // '5' seconds delay
@@ -405,6 +398,8 @@ function executeN2Go($action, $post)
 
 /**
  * Registers tokens.
+ *
+ * @return array
  */
 function newsletter2go_token_info()
 {
@@ -430,6 +425,12 @@ function newsletter2go_token_info()
 
 /**
  * Implements hook_tokens().
+ *
+ * @param $type
+ * @param $tokens
+ * @param array $data
+ * @param array $options
+ * @return array
  */
 function newsletter2go_tokens($type, $tokens, array $data = array(), array $options = array())
 {
