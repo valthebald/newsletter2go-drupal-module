@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Return block info.
+ *
+ * @return mixed
+ */
 function newsletter2go_block_info()
 {
     $blocks['newsletter2go'] = array(
@@ -10,6 +15,13 @@ function newsletter2go_block_info()
     return $blocks;
 }
 
+/**
+ * Return block view.
+ *
+ * @param string $delta
+ * @param string $func
+ * @return array
+ */
 function newsletter2go_block_view($delta = '', $func = 'createForm')
 {
     $block = array();
@@ -35,6 +47,11 @@ function newsletter2go_block_view($delta = '', $func = 'createForm')
     return $block;
 }
 
+/**
+ * Check permission.
+ *
+ * @return array
+ */
 function newsletter2go_permission()
 {
     return array(
@@ -44,6 +61,11 @@ function newsletter2go_permission()
     );
 }
 
+/**
+ * Returns menu.
+ *
+ * @return array
+ */
 function newsletter2go_menu()
 {
     $items = array();
@@ -82,6 +104,11 @@ function newsletter2go_menu()
     return $items;
 }
 
+/**
+ * Return page alert.
+ *
+ * @param $page
+ */
 function newsletter2go_page_alter(&$page)
 {
     if (strpos($_SERVER['REQUEST_URI'], url('n2go/widget')) === 0) {
@@ -93,11 +120,19 @@ function newsletter2go_page_alter(&$page)
     }
 }
 
+/**
+ * Widget preview page.
+ *
+ * @return string
+ */
 function _widget_preview_page()
 {
     return urldecode($_GET['widget']);
 }
 
+/**
+ * Process instance authorization.
+ */
 function _newsletter2go_page()
 {
     require_once __DIR__ . '/newsletter2goApi.php';
@@ -105,6 +140,9 @@ function _newsletter2go_page()
     $instance->processRequest($_SERVER['PHP_AUTH_USER'], $_GET, $_POST);
 }
 
+/**
+ * Request newsletter2go page.
+ */
 function _ajax_newsletter2go_page()
 {
     $notFound = false;
@@ -167,6 +205,9 @@ function _ajax_newsletter2go_page()
     drupal_exit();
 }
 
+/**
+ * Newsletter2go init.
+ */
 function newsletter2go_init()
 {
     $path = drupal_get_path('module', 'newsletter2go');
@@ -185,6 +226,12 @@ function newsletter2go_init()
     drupal_add_js($path . '/newsletter2go_ajax.js');
 }
 
+/**
+ * Returns newsletter2go form.
+ * @param $form
+ * @param $form_state
+ * @return mixed
+ */
 function newsletter2go_form($form, &$form_state)
 {
     $apiKey = variable_get('newsletter2go_apikey');
@@ -349,6 +396,12 @@ function newsletter2go_form($form, &$form_state)
     return $form;
 }
 
+/**
+ * Validate form.
+ *
+ * @param $form
+ * @param $form_state
+ */
 function newsletter2go_form_validate($form, &$form_state)
 {
     if (empty($form_state['values']['api']['apikey'])) {
@@ -356,6 +409,12 @@ function newsletter2go_form_validate($form, &$form_state)
     }
 }
 
+/**
+ * Form submit action.
+ *
+ * @param $form
+ * @param $form_state
+ */
 function newsletter2go_form_submit($form, &$form_state)
 {
     variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
