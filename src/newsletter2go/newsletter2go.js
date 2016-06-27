@@ -1,289 +1,152 @@
 function n2goPreviewRendered() {
     document.getElementById('preview-loading-mask').style.display = 'none';
 }
+window.addEventListener('load', function () {
+    var formUniqueCode = document.getElementById('formUniqueCode').value.trim(),
+        widgetPreview = document.getElementById('widgetPreview');
 
-window.onload = function (e) {
-    var dragSrcEl = null,
-            farb = jQuery.farbtastic('#colorPicker'),
-            elements = document.getElementsByClassName('js-n2go-widget-field'),
-            i,
-            renderHTML = function () {
-                var widget = document.getElementById('widgetSourceCode'),
-                        view = document.getElementById('widgetPreview');
-                document.getElementById('preview-loading-mask').style.display = 'block';
-                widget.style.display = 'none';
-                view.src = document.getElementById('widgetPageUrl').value + '?widget=' + encodeURIComponent(widget.value);
-                view.style.display = 'block';
+    if (formUniqueCode) {
+        var picker = jQuery.farbtastic('#colorPicker'),
+            widgetStyleConfig = document.getElementById('widgetStyleConfig'),
+            input,
+            timer = 0,
+            n2gSetUp = function  () {
+                if (widgetStyleConfig.textContent === null || widgetStyleConfig.textContent.trim() === "") {
+                    widgetStyleConfig.textContent = JSON.stringify(n2gConfig, null, 2);
+                } else {
+                    n2gConfig = JSON.parse(widgetStyleConfig.textContent);
+                }
 
-                document.getElementById('btnShowPreview').className = 'form-submit button-pressed';
-                document.getElementById('btnShowSource').className = 'form-submit';
+                [].forEach.call(document.getElementsByClassName('nl2g-fields'), function (element) {
+
+
+                    var field = element.id.split('.');
+                    var style = getStyle(field[1], n2gConfig[field[0]]['style']);
+
+                    element.value = element.style.backgroundColor = style;
+                    if (element.value !== '') {
+                        element.style.color = picker.RGBToHSL(picker.unpack(element.value))[2] > 0.5 ? '#000' : '#fff';
+                    }
+                });
             };
 
-    function buildWidgetForm(rebuildForm) {
-        var sourceCode = '';
-        if (rebuildForm) {
-            var checkBoxes = document.getElementsByClassName('form-checkbox'),
-                    fields = [], i, elem,
-                    texts, styles, inputStyle;
+        function getStyle (field, str) {
+            var styleArray = str.split(';');
 
-            for (i = 0; i < checkBoxes.length; i++) {
-                if (checkBoxes[i].checked === true) {
-                    elem = [];
-                    elem['sort'] = document.getElementsByName(checkBoxes[i].value + 'Sort')[0].value;
-                    elem['required'] = document.getElementsByName(checkBoxes[i].value + 'Required')[0].value;
-                    elem['name'] = checkBoxes[i].title;
-                    elem['id'] = checkBoxes[i].value;
-
-                    fields.push(elem);
+            for (var i=0; i < styleArray.length; i++){
+                var styleField = styleArray[i].split(':');
+                if (styleField[0].trim() == field) {
+                    return styleField[1].trim();
                 }
             }
+            return '';
+        }
 
-            texts = [];
-            texts['button'] = document.getElementById('edit-widget-texts-buttontext').value;
+        function updateConfig (element) {
+            widgetStyleConfig.textContent = '';
+            var formPropertyArray = element.id.split('.'),
+                property = formPropertyArray[0],
+                attribute = 'style',
+                cssProperty = formPropertyArray[1],
+                cssValue = element.value;
 
-            styles = [];
-            styles['formBgColor'] = document.getElementById('edit-widget-colors-formbgcolor').value;
-            styles['textColor'] = document.getElementById('edit-widget-colors-textcolor').value;
-            styles['borderColor'] = document.getElementById('edit-widget-colors-bordercolor').value;
-            styles['backgroundColor'] = document.getElementById('edit-widget-colors-bgcolor').value;
-            styles['btnTextColor'] = document.getElementById('edit-widget-colors-btntextcolor').value;
-            styles['btnBackgroundColor'] = document.getElementById('edit-widget-colors-btnbgcolor').value;
+            var styleProperties;
+            if (n2gConfig[property][attribute] == '') {
+                styleProperties = cssProperty + ':' + cssValue;
+            } else {
+                styleProperties = updateString(n2gConfig[property][attribute], cssProperty, cssValue);
+            }
 
-            fields.sort(function (a, b) {
-                return a['sort'] - b['sort'];
+            n2gConfig[property][attribute] = styleProperties;
+            widgetStyleConfig.textContent = JSON.stringify(n2gConfig, null, 2);
+        }
+
+        function updateForm () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                document.getElementById('n2g_form').remove();
+                n2g('subscribe:createForm', n2gConfig);
+            }, 100);
+        }
+
+        function updateString (string, cssProperty, cssValue) {
+            var stylePropertiesArray = string.split(';'),
+                found = false,
+                updatedString;
+            // todo
+            for (var i = 0; i < stylePropertiesArray.length-1; i++) {
+                var trimmedAttr = stylePropertiesArray[i].trim();
+                var styleProperty = trimmedAttr.split(':');
+                if (styleProperty[0] == cssProperty) {
+                    styleProperty[1] = cssValue;
+                    stylePropertiesArray[i] = styleProperty[0] + ':' + styleProperty[1];
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                stylePropertiesArray[i] = cssProperty + ':' + cssValue;
+            }
+
+            updatedString = stylePropertiesArray.join(';');
+
+            if(updatedString.slice(-1) !== ';'){
+                updatedString+=';';
+            }
+
+            return updatedString;
+        }
+
+        function show () {
+            switch(this.id) {
+                case 'btnShowConfig':
+                    widgetStyleConfig.style.display = 'block';
+                    widgetPreview.style.display = 'none';
+                    break;
+                default:
+                    widgetPreview.style.display = 'block';
+                    widgetStyleConfig.style.display = 'none';
+            }
+            this.className = 'form-submit btn-nl2go';
+            [].forEach.call(jQuery('#'+this.id).siblings(), function(button) {
+                button.className = 'form-submit';
             });
-
-            inputStyle = 'style="';
-            inputStyle += styles['formBgColor'] ? 'background-color:' + styles['formBgColor'] + '; ' : '';
-            inputStyle += styles['textColor'] ? 'color:' + styles['textColor'] + '; ' : '';
-            inputStyle += '" ';
-
-            sourceCode = '<div id="n2goResponseArea" ' + inputStyle + '>';
-            sourceCode += '\n  <form method="post" id="n2goForm">';
-
-            if (styles['borderColor'] || styles['backgroundColor'] || styles['textColor']) {
-                inputStyle = 'style="';
-                inputStyle += styles['borderColor'] ? 'border-color:' + styles['borderColor'] + '; ' : '';
-                inputStyle += styles['backgroundColor'] ? 'background-color:' + styles['backgroundColor'] + '; ' : '';
-                inputStyle += styles['textColor'] ? 'color:' + styles['textColor'] + '; ' : '';
-                inputStyle += '" ';
-            }
-
-            for (i = 0; i < fields.length; i++) {
-                if (fields[i]['name'] === 'Gender') {
-                    sourceCode += '\n    ' + fields[i]['name'] + '<br />\n    ' + '<select ' + inputStyle + 'name="' + fields[i]['id'] + '" ' + fields[i]['required'] + '>';
-                    sourceCode += '\n      <option value=" "></option>';
-                    sourceCode += '\n      <option value="m">Male</option>';
-                    sourceCode += '\n      <option value="f">Female</option>';
-                    sourceCode += '\n    </select><br>';
-                } else {
-                    sourceCode += '\n    ' + fields[i]['name'] + '<br />\n    ' + '<input ' + inputStyle + 'type="text" name="' + fields[i]['id'] + '"' +  fields[i]['required'] + ' /><br />';
-                }
-            }
-
-            sourceCode += '\n    <br />\n    <div class="message"></div>';
-            sourceCode += '\n    <input ';
-            if (styles['btnTextColor'] || styles['btnBackgroundColor']) {
-                sourceCode += 'style="';
-                sourceCode += styles['btnTextColor'] ? 'color:' + styles['btnTextColor'] + ';' : '';
-                sourceCode += styles['btnBackgroundColor'] ? 'background-color:' + styles['btnBackgroundColor'] + ';' : '';
-                sourceCode += '"';
-            }
-
-            sourceCode += ' id="n2goButton" type="button" value="' + texts['button'] + '" onClick="n2goAjaxFormSubmit();" class="form-submit" />\n  </form>\n</div>';
-            document.getElementById('widgetSourceCode').innerHTML = sourceCode;
-            document.getElementById('widgetSourceCode').value = sourceCode;
         }
 
-        renderHTML();
-    }
+        jQuery('.color-picker').focus(function () {
+            input = this;
+            picker.linkTo(function () {}).setColor('#000');
+            picker.linkTo(function (color) {
+                input.style.backgroundColor = color;
+                input.style.color = picker.RGBToHSL(picker.unpack(color))[2] > 0.5 ? '#000' : '#fff';
+                input.value = color;
 
-    function extractValues(elem) {
-        return {
-            valueRequired: elem.children[3].value,
-            id: elem.children[0].children[0].id,
-            name: elem.children[0].children[0].name,
-            value: elem.children[0].children[0].value,
-            title: elem.children[0].children[0].title,
-            checked: elem.children[0].children[0].checked,
-            disabled: elem.children[0].children[0].disabled,
-            label: elem.children[0].children[1].innerHTML,
-            displayLabel: elem.children[1].innerHTML
-        };
-    }
+                updateConfig(input);
+                updateForm();
 
-    function importValues(elem, values) {
-        elem.children[1].innerHTML = values.displayLabel;
-        elem.children[2].name = values.value + 'Sort';
-        elem.children[3].name = values.value + 'Required';
-        elem.children[3].value = values.valueRequired;
-        elem.children[4].name = 'textFields[' + values.value + ']';
-        elem.children[4].value = values.title;
-        elem.children[0].children[0].id = values.id;
-        elem.children[0].children[0].name = values.name;
-        elem.children[0].children[0].value = values.value;
-        elem.children[0].children[0].title = values.title;
-        elem.children[0].children[0].checked = values.checked;
-        elem.children[0].children[0].disabled = values.disabled;
-        elem.children[0].children[1].htmlFor = values.id;
-        elem.children[0].children[1].innerHTML = values.label;
-    }
-
-    function handleDragStart(e) {
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('Text', JSON.stringify(extractValues(this)));
-    }
-
-    function handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        e.preventDefault();
-        this.classList.add('over');
-    }
-
-    function handleDragLeave(e) {
-        e.preventDefault();
-        this.classList.remove('over');
-    }
-
-    function handleDrop(e) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (dragSrcEl !== this) {
-            var a = JSON.parse(e.dataTransfer.getData('Text'));
-            var b = extractValues(this);
-            importValues(dragSrcEl, b);
-            importValues(this, a);
-        }
-
-        return false;
-    }
-
-    function handleDragEnd(e) {
-        [].forEach.call(document.querySelectorAll('#widgetFields .widgetField'), function (field) {
-            field.classList.remove('over');
+            }).setColor(input.value);
+        }).blur(function () {
+            picker.linkTo(function () {}).setColor('#000');
+            if (!input.value) {
+                input.style.backgroundColor = '';
+                input.style.color = '';
+            }
+            updateConfig(input);
+            updateForm();
         });
 
-        buildWidgetForm(true);
+        n2gSetUp();
+
+        n2g('create', formUniqueCode);
+        n2g('subscribe:createForm', n2gConfig);
+
+        [].forEach.call(document.getElementById('n2gButtons').children, function (button) {
+            button.addEventListener('click', show);
+        });
+
+        document.getElementById('colorPicker').addEventListener('click', function () {
+            input && input.focus();
+        });
+
     }
-
-    function transformToEditBox(e) {
-        var me = this,
-            parent = me.parentNode,
-            textField = document.createElement('input'),
-            oldText = me.textContent.replace('*', '').trim();
-
-        textField.type = 'text';
-        textField.value = oldText;
-        textField.addEventListener('blur', function(){
-            var val = this.value;
-
-            parent.draggable = true;
-            val = val ? val : oldText;
-            if (oldText === val) {
-                parent.replaceChild(me, this);
-                return true;
-            }
-
-            parent.children[0].children[0].title = val;
-            parent.children[4].value = val;
-            me.innerHTML = me.innerHTML.replace(oldText, val);
-
-            parent.replaceChild(me, this);
-            buildWidgetForm(true);
-        }, false);
-
-        parent.replaceChild(textField, me);
-        parent.draggable = false;
-        textField.focus();
-
-        e.preventDefault();
-        return false;
-    }
-
-    [].forEach.call(document.querySelectorAll('#widgetFields .widgetField'), function (field) {
-        field.addEventListener('dragstart', handleDragStart, false);
-        field.addEventListener('dragenter', handleDragEnter, false);
-        field.addEventListener('dragover', handleDragOver, false);
-        field.addEventListener('dragleave', handleDragLeave, false);
-        field.addEventListener('drop', handleDrop, false);
-        field.addEventListener('dragend', handleDragEnd, false);
-    });
-
-    [].forEach.call(document.querySelectorAll('.n2go-editable-label'), function (field) {
-        field.addEventListener('click', transformToEditBox, false);
-    });
-
-    buildWidgetForm(true);
-
-    document.getElementById('btnShowSource').onclick = function () {
-        var view = document.getElementById('widgetSourceCode');
-        view.style.display = 'block';
-        document.getElementById('widgetPreview').style.display = 'none';
-        this.className = 'form-submit button-pressed';
-        document.getElementById('btnShowPreview').className = 'form-submit';
-    };
-
-    document.getElementById('btnShowPreview').onclick = function(){
-        renderHTML();
-    };
-
-    function hookClickHandler(checkbox) {
-        checkbox.onclick = function (e) {
-            var grandparent = this.parentElement.parentElement,
-                hiddenReq = grandparent.children[3];
-
-            if (!this.checked) {
-                if (hiddenReq.value === 'required') {
-                    e.preventDefault();
-                    this.checked = true;
-                    hiddenReq.value = '';
-                    grandparent.children[1].innerHTML = this.title;
-                    buildWidgetForm();
-
-                    return false;
-                }
-            } else {
-                hiddenReq.value = 'required';
-                grandparent.children[1].innerHTML += ' <span class="form-required n2go-required" title="This field is required.">*</span>';
-            }
-        };
-    }
-
-    for (i = 0; i < elements.length; i++) {
-        if (elements[i].type === 'checkbox') {
-            hookClickHandler(elements[i]);
-        }
-
-        elements[i].onchange = function () {
-            buildWidgetForm(true);
-        };
-    }
-
-    jQuery('.color-picker').focus(function() {
-        var input = this;
-
-        // reset to start position before linking to current input
-        farb.linkTo(function(){}).setColor('#000');
-        farb.linkTo(function (color) {
-            input.style.backgroundColor = color;
-            input.style.color = farb.RGBToHSL(farb.unpack(color))[2] > 0.5 ? '#000' : '#fff';
-            input.value = color;
-        }).setColor(input.value);
-    }).blur(function () {
-        farb.linkTo(function(){}).setColor('#000');
-        if (!this.value) {
-            this.style.backgroundColor = '';
-            this.style.color = '';
-        }
-
-        buildWidgetForm(true);
-    });
-};
+});
