@@ -1,13 +1,11 @@
-function n2goPreviewRendered() {
-    document.getElementById('preview-loading-mask').style.display = 'none';
-}
 window.addEventListener('load', function () {
     var formUniqueCode = document.getElementById('formUniqueCode').value.trim(),
-        widgetPreview = document.getElementById('widgetPreview');
+        widgetPreviewSubscribe = document.getElementById('widgetPreview'),
+        widgetPreviewUnsubscribe = document.getElementById('widgetPreviewUnsubscribe'),
+        nl2gStylesConfig = document.getElementById('nl2gStylesConfig');
 
     if (formUniqueCode) {
-        var picker = jQuery.farbtastic('#colorPicker'),
-            widgetStyleConfig = document.getElementById('widgetStyleConfig'),
+        var widgetStyleConfig = document.getElementById('widgetStyleConfig'),
             input,
             timer = 0,
             n2gSetUp = function  () {
@@ -17,16 +15,17 @@ window.addEventListener('load', function () {
                     n2gConfig = JSON.parse(widgetStyleConfig.textContent);
                 }
 
-                [].forEach.call(document.getElementsByClassName('nl2g-fields'), function (element) {
-
-
-                    var field = element.id.split('.');
+                [].forEach.call(document.getElementsByClassName('n2go-colorField'), function (element) {
+                    var field = element.name.match(/[^.]+/g);
                     var style = getStyle(field[1], n2gConfig[field[0]]['style']);
 
-                    element.value = element.style.backgroundColor = style;
-                    if (element.value !== '') {
-                        element.style.color = picker.RGBToHSL(picker.unpack(element.value))[2] > 0.5 ? '#000' : '#fff';
+                    if (style !== '') {
+                        style = style.replace('#','');
+                        element.value = style;
+                        element.focus();
+                        element.blur();
                     }
+
                 });
             };
 
@@ -44,11 +43,11 @@ window.addEventListener('load', function () {
 
         function updateConfig (element) {
             widgetStyleConfig.textContent = '';
-            var formPropertyArray = element.id.split('.'),
+            var formPropertyArray = element.name.match(/[^.]+/g);
                 property = formPropertyArray[0],
                 attribute = 'style',
                 cssProperty = formPropertyArray[1],
-                cssValue = element.value;
+                cssValue = '#' + element.value;
 
             var styleProperties;
             if (n2gConfig[property][attribute] == '') {
@@ -63,14 +62,22 @@ window.addEventListener('load', function () {
 
         function updateForm () {
             clearTimeout(timer);
-            timer = setTimeout(function () {
-                document.getElementById('n2g_form').remove();
-                n2g('subscribe:createForm', n2gConfig);
-            }, 100);
+            if (jQuery('#widgetPreview').length > 0) {
+                timer = setTimeout(function () {
+                    jQuery('#widgetPreview').find('form').remove();
+                    n2g('subscribe:createForm', n2gConfig, 'n2g_script_subscribe');
+                }, 100);
+            }
+            if (jQuery('#widgetPreviewUnsubscribe').length > 0) {
+                timer = setTimeout(function () {
+                    jQuery('#widgetPreviewUnsubscribe').find('form').remove();
+                    n2g('unsubscribe:createForm', n2gConfig, 'n2g_script_unsubscribe');
+                }, 100);
+            }
         }
 
         function updateString (string, cssProperty, cssValue) {
-            var stylePropertiesArray = string.split(';'),
+            var stylePropertiesArray = string.match(/[^;]+/g),
                 found = false,
                 updatedString;
             // todo
@@ -98,55 +105,65 @@ window.addEventListener('load', function () {
         }
 
         function show () {
-            switch(this.id) {
-                case 'btnShowConfig':
-                    widgetStyleConfig.style.display = 'block';
-                    widgetPreview.style.display = 'none';
+            var btnConfig = jQuery('#btnShowConfig'),
+                btnPreviewSubscribe = jQuery('#btnShowPreviewSubscribe'),
+                btnPreviewUnsubscribe = jQuery('#btnShowPreviewUnsubscribe');
+
+            jQuery('#n2gButtons li').removeClass('active');
+            jQuery('#preview-form-panel > div').hide();
+
+            switch (this.id) {
+                case 'btnShowPreviewUnsubscribe':
+                    widgetPreviewUnsubscribe.style.display = 'block';
+                    btnPreviewUnsubscribe.addClass('active');
+                    break;
+                case 'btnShowPreviewSubscribe':
+                    widgetPreviewSubscribe.style.display = 'block';
+                    btnPreviewSubscribe.addClass('active');
                     break;
                 default:
-                    widgetPreview.style.display = 'block';
-                    widgetStyleConfig.style.display = 'none';
+                    nl2gStylesConfig.style.display = 'block';
+                    btnConfig.addClass('active');
+                    break;
             }
-            this.className = 'form-submit btn-nl2go';
-            [].forEach.call(jQuery('#'+this.id).siblings(), function(button) {
-                button.className = 'form-submit';
-            });
         }
-
-        jQuery('.color-picker').focus(function () {
-            input = this;
-            picker.linkTo(function () {}).setColor('#000');
-            picker.linkTo(function (color) {
-                input.style.backgroundColor = color;
-                input.style.color = picker.RGBToHSL(picker.unpack(color))[2] > 0.5 ? '#000' : '#fff';
-                input.value = color;
-
-                updateConfig(input);
-                updateForm();
-
-            }).setColor(input.value);
-        }).blur(function () {
-            picker.linkTo(function () {}).setColor('#000');
-            if (!input.value) {
-                input.style.backgroundColor = '';
-                input.style.color = '';
-            }
-            updateConfig(input);
-            updateForm();
-        });
 
         n2gSetUp();
 
         n2g('create', formUniqueCode);
-        n2g('subscribe:createForm', n2gConfig);
+        
+        if (jQuery('#widgetPreview').length > 0) {
+            n2g('subscribe:createForm', n2gConfig, 'n2g_script_subscribe');
+        }
+        if (jQuery('#widgetPreviewUnsubscribe').length > 0) {
+            n2g('unsubscribe:createForm', n2gConfig, 'n2g_script_unsubscribe');
+        }
+
+        // show();
 
         [].forEach.call(document.getElementById('n2gButtons').children, function (button) {
             button.addEventListener('click', show);
         });
 
-        document.getElementById('colorPicker').addEventListener('click', function () {
-            input && input.focus();
-        });
+        jQuery('.n2go-colorField').change( function() {
+            input = this;
 
+            updateConfig(input);
+            updateForm();
+        });
+        document.getElementById("resetStyles").addEventListener("click", function(e){
+            e.preventDefault();
+            var defaultConfig = JSON.stringify(n2goConfigConst, null, 2);
+            jQuery.ajax({
+                type: 'POST',
+                url: document.location.origin+Drupal.settings.basePath+ 'n2go/resetStyles',
+                data :{
+                    style: defaultConfig
+                },
+                success: function (data) {
+                     location.reload();
+                }
+            });
+        });
     }
 });

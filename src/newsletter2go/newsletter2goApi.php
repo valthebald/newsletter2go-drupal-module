@@ -4,7 +4,7 @@ require_once __DIR__.'/Nl2go_ResponseHelper.php';
 
 class Newsletter2GoApi
 {
-    private $version = 3000;
+    private $version = 4000;
     private static $instance = null;
     private $getParams;
     private $postParams;

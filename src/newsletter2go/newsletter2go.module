@@ -1,5 +1,10 @@
 <?php
 
+const N2GO_API_URL = 'https://api-staging.newsletter2go.com/';
+const N2GO_INTEGRATION_URL = 'https://ui-staging.newsletter2go.com/integrations/connect/DRU/';
+const N2GO_REFRESH_GRANT_TYPE = 'https://nl2go.com/jwt_refresh';
+const N2GO_PLUGIN_VERSION = 4000;
+
 /**
  * Return block info.
  *
@@ -20,9 +25,10 @@ function newsletter2go_block_info()
  *
  * @param string $delta
  * @param string $func
+ * @param string $type
  * @return array
  */
-function newsletter2go_block_view($delta = '', $func = 'createForm')
+function newsletter2go_block_view($delta = '', $func = 'createForm', $type = '')
 {
     $block = array();
 
@@ -31,16 +37,24 @@ function newsletter2go_block_view($delta = '', $func = 'createForm')
             $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
             $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
 
-            $params = "'subscribe:$func', " . $n2gConfig;
+            $formType = variable_get('newsletter2go_formType');
+            if (empty($type)) {
+                !empty($formType) ? $type = $formType : $type = 'subscribe';
+            }
+			
+            empty($func) ? $func = 'createForm' : '';
+			$uniqueId = uniqid();
+			
+            $params = "'$type:$func', " . $n2gConfig;
             if ($func == 'createPopup') {
                 $params .= ", 5"; // '5' seconds delay
             }
 
             $block['subject'] = t('Newsletter2Go');
-            $block['content'] = '<script id="n2g_script">
-                !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
+            $block['content'] = '<script id="'.($uniqueId ? $uniqueId : "n2g_script").'">
+                !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static-staging.newsletter2go.com/utils.js","n2g");
                 n2g(\'create\',\''.$formUniqueCode.'\');
-                n2g(' . $params . ');
+                n2g(' . $params . ''.($uniqueId ? ',"'.$uniqueId.'"' : "").');
                         </script>';
     }
 
@@ -93,12 +107,28 @@ function newsletter2go_menu()
         'type' => MENU_CALLBACK,
         'access callback' => true,
     );
+
+    $items['n2go/callback'] = array(
+        'title' => 'Newsletter2Go',
+        'page callback' => '_newsletter2go_callback',
+        'access arguments' => array('access newsletter2go content'),
+        'type' => MENU_CALLBACK,
+        'access callback' => true,
+    );
+
     $items['n2go/subscribe'] = array(
         'title' => 'Subscribe',
         'page callback' => '_ajax_newsletter2go_page',
         'access arguments' => array('access newsletter2go content'),
         'type' => MENU_CALLBACK,
         'access callback' => true,
+    );
+    $items['n2go/resetStyles'] = array(
+        'title' => 'Reset form styles',
+        'page callback' => '_reset_styles',
+        'access callback' => TRUE,
+        'access arguments' => array('access newsletter2go content'),
+        'type' => MENU_CALLBACK,
     );
 
     return $items;
@@ -138,6 +168,16 @@ function _newsletter2go_page()
     require_once __DIR__ . '/newsletter2goApi.php';
     $instance = Newsletter2GoApi::getInstance();
     $instance->processRequest($_SERVER['PHP_AUTH_USER'], $_GET, $_POST);
+}
+
+/**
+ * Process callback
+ */
+function _newsletter2go_callback()
+{
+    require_once __DIR__ . '/newsletter2goCallback.php';
+    $instance = Newsletter2GoCallback::getInstance();
+    $instance->processCallback($_POST);
 }
 
 /**
@@ -212,10 +252,10 @@ function newsletter2go_init()
 {
     $path = drupal_get_path('module', 'newsletter2go');
     if (arg(0) == 'admin' && arg(3) == 'newsletter2go') {
+        drupal_add_js($path . '/jscolor.min.js');
         drupal_add_js($path . '/newsletter2go_default.js');
         drupal_add_js($path . '/newsletter2go.js');
-        drupal_add_js('misc/farbtastic/farbtastic.js');
-        drupal_add_css('misc/farbtastic/farbtastic.css');
+        drupal_add_css($path . '/font-awesome.css');
         drupal_add_css($path . '/newsletter2go.css');
     }
 
@@ -234,9 +274,38 @@ function newsletter2go_init()
  */
 function newsletter2go_form($form, &$form_state)
 {
+
     $apiKey = variable_get('newsletter2go_apikey');
     $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
     $nl2gStylesConfigObject = variable_get('newsletter2go_widgetStyleConfig');
+
+    $queryParams['version'] = N2GO_PLUGIN_VERSION;
+    $queryParams['apiKey'] = $apiKey;
+
+    if($queryParams['apiKey']==''){
+        variable_set('newsletter2go_apikey', generateRandomString());
+        $queryParams['apiKey'] = variable_get('newsletter2go_apikey');
+    }
+
+    $queryParams['language'] = $GLOBALS['language']->language;
+    $queryParams['url'] = $GLOBALS['base_url'];
+    $queryParams['callBack'] = $queryParams['url'].'nl2go/callback.php';
+
+    $apiConnectUrl = N2GO_INTEGRATION_URL . '?' . http_build_query($queryParams);
+
+    $authKey = variable_get('newsletter2go_authKey');
+    $forms = getForms($authKey);
+
+    $hasForms = true;
+    if ($forms === false ) {
+        $hasForms = false;
+        $forms = array();
+    }
+
+    $selectForms = array();
+    foreach ($forms as $f) {
+        $selectForms[$f['hash']] = $f['name'];
+    }
 
     $response = executeN2Go('get/attributes', array('key' => $apiKey));
     $color = $response['success'] ? 'greenyellow' : 'yellow';
@@ -246,151 +315,247 @@ function newsletter2go_form($form, &$form_state)
         $errorMessage = "Please, enter the form unique code!";
     }
 
+    if (isset($forms[$formUniqueCode]['type_subscribe'])) {
+        $forms[$formUniqueCode]['type_subscribe'] ? $active = true : $active = false;
+    } else {
+        $active = false;
+    }
+
     $form['api'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Newsletter2Go API'),
+
         '#tree' => TRUE,
-        'connected' => array(
-          '#markup' => '<h3 id="n2goHeaderConnection" style="background-color: ' . $color . ';">' .
-              ($response['success'] ? t('Connected!') : t('Not connected yet!')) . '</h3>',
+        '#submit' => array('newsletter2go_form_submit'),
+        'n2goSection' => array(
+            '#markup' => '<div class="n2go-section">
+                            <div class="n2go-block50 main-block">
+                                <div class="panel">
+                                    <div class="panel-heading text-center">
+                                        <h3>'. t('Newsletter2Go Drupal Plugin') .'</h3>
+                                    </div>
+                                        <div class="panel-body">',
         ),
 
-        'apikey' => array(
-            '#type' => 'textfield',
-            '#title' => t('API Key'),
-            '#default_value' => $apiKey,
-            '#description' => t('<a href="https://app.newsletter2go.com/en/settings/#/api" target="_blank" >Where do I find my API key?</a>'),
-            '#size' => 30, 
-            '#required' => TRUE,
-            '#attributes' => array(
-                'placeholder' => t('Insert your Newsletter2Go API key'),
-            ),
+        'connectButton' => array(
+            '#markup' => '  <div class="n2go-row">
+                        <div class="n2go-block50"><span>'. t('Login or Create Account') .'</span></div>
+                        <div class="n2go-block25">'.
+
+                ($hasForms === false ? ' <div class="n2go-btn">
+                                    <input type="hidden" name="apiKey" placeholder="" value='.$apiKey.' style="width:300px" readonly>
+                                    <a href='. $apiConnectUrl .' target="_blank" style="padding:5px"><span class="fa fa-plug"></span> <span>'. t('Login or Create Account') .'</span></a>
+                                </div></div></div>'
+
+                    : '<span class="n2go-label-success"> <span class="fa fa-check margin-right-5"></span>
+                            <span>'. t('Successfully connected') .'</span></span><br><br><button type="submit" name="resetValues" value="disconnect" class="n2go-disconnect-btn">'. t('Disconnect') .'</button></div></div>'),
         ),
+
+        'selectBody' => array(
+            '#markup' => '  <div class="n2go-row">
+                      <div class="n2go-block50"><span>'. t('Choose the connected subscribe form') .'</span></div>
+                        <div class="n2go-block25">'
+        ),
+
         'formUniqueCode' => array(
             '#id' => 'formUniqueCode',
-            '#type' => 'textfield',
-            '#title' => t('Form Unique Code'),
+            '#type' => 'select',
             '#default_value' => $formUniqueCode,
-            '#description' => t('<a href="https://www.newsletter2go.com/help/managing-recipients/set-up-double-opt-in" target="_blank" >Where do I find form unique code?</a>'),
-            '#size' => 30,
-            '#attributes' => array(
-                'placeholder' => t('Insert your Form Unique Code'),
-            ),
+            '#options' => $selectForms
         ),
-        'submit' => array(
-            '#type' => 'submit',
-            '#default_value' => t('Save'),
-            '#attributes' => array(
-                'class' => array('button-pressed'),
-            ),
-        ),
-    );
 
-    $form['widget']['colors'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Visual appearance'),
-        '#tree' => TRUE,
+        'endSelectBody' => array(
+            '#markup' => '</div></div>'
+        ),
+
+        'endPanelBody' => array(
+            '#markup' => '</div>',
+        ),
+
+        'colorPanel' => array(
+            '#markup' => '    <div class="n2go-row">
+                    <div class="n2go-block50"><span>'. t('Configure your Drupal widget') .'</span></div>
+                    <div class="n2go-block50">',
+        ),
+
+        'formUniqueCode' => array(
+            '#id' => 'formUniqueCode',
+            '#name' => 'formUniqueCode',
+            '#type' => 'select',
+            '#default_value' => $formUniqueCode,
+            '#options' => $selectForms,
+            '#attributes' => array(
+                'class' => array('n2go-select'),
+            ),
+        ),
 
         'form.background-color' => array(
-            '#id' =>'form.background-color',
+            '#id' =>'valueInputFBC',
+            '#name' =>'form.background-color',
             '#type' => 'textfield',
-            '#title' => t('Form background color'),
-            '#size' => 7,
-            '#prefix' => '<div style="float: left;">',
+            '#default_value' => 'FFFFFF',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Form background color') .'</label>
+                    <div class="n2go-cp input-group">
+                        <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputFBC" class="input-group-btn jscolor{valueElement:\'valueInputFBC\', styleElement:\'styleInputFBC\'}">
+                        </button>
+                    </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'label.color' => array(
-            '#id' =>'label.color',
+            '#id' =>'valueInputLC',
             '#type' => 'textfield',
-            '#title' => t('Label color'),
-            '#size' => 7,
-            '#prefix' => '<div style="float: left;">',
+            '#name' =>'label.color',
+            '#default_value' => '222222',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Label color') .'</label>
+                    <div class="n2go-cp input-group">
+                        <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputLC" class="input-group-btn jscolor{valueElement:\'valueInputLC\', styleElement:\'styleInputLC\'}">
+                        </button>
+                    </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'input.color' => array(
-            '#id' =>'input.color',
+            '#id' =>'valueInputIC',
             '#type' => 'textfield',
-            '#title' => t('Input color'),
-            '#size' => 7,
-            '#prefix' => '<div style="float: left;">',
+            '#name' =>'input.color',
+            '#default_value' => '222222',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Input color') .'</label>
+                        <div class="n2go-cp input-group">
+                            <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputIC" class="input-group-btn jscolor{valueElement:\'valueInputIC\', styleElement:\'styleInputIC\'}">
+                            </button>
+                        </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'input.border-color' => array(
-            '#id' =>'input.border-color',
+            '#id' =>'valueInputIBrC',
             '#type' => 'textfield',
-            '#title' => t('Input border color'),
-            '#size' => 7,
+            '#name' =>'input.border-color',
+            '#default_value' => 'CCCCCC',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Input border color') .'</label>
+                            <div class="n2go-cp input-group">
+                                <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputIBrC" class="input-group-btn jscolor{valueElement:\'valueInputIBrC\', styleElement:\'styleInputIBrC\'}">
+                                </button>
+                            </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'input.background-color' => array(
-            '#id' =>'input.background-color',
+            '#id' =>'valueInputIBC',
             '#type' => 'textfield',
-            '#title' => t('Input background color'),
-            '#size' => 7,
+            '#name' =>'input.background-color',
+            '#default_value' => 'FFFFFF',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Input background color') .'</label>
+                                <div class="n2go-cp input-group">
+                                    <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputIBC" class="input-group-btn jscolor{valueElement:\'valueInputIBC\', styleElement:\'styleInputIBC\'}">
+                                    </button>
+                                </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'button.color' => array(
-            '#id' =>'button.color',
+            '#id' =>'valueInputBC',
             '#type' => 'textfield',
-            '#title' => t('Button text color'),
-            '#size' => 7,
+            '#name' =>'button.color',
+            '#default_value' => 'FFFFFF',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Button text color') .'</label>
+                                    <div class="n2go-cp input-group">
+                                        <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputBC" class="input-group-btn jscolor{valueElement:\'valueInputBC\', styleElement:\'styleInputBC\'}">
+                                        </button>
+                                    </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
         'button.background-color' => array(
-            '#id' =>'button.background-color',
+            '#id' =>'valueInputBBC',
             '#type' => 'textfield',
-            '#title' => t('Button background color'),
-            '#size' => 7,
-            '#suffix' => '</div>',
+            '#name' =>'button.background-color',
+            '#default_value' => '00BAFF',
+            '#theme_wrappers' => array(),
+            '#prefix' => '<label for="formBackgroundColor">'. t('Button background color') .'</label>
+                                        <div class="n2go-cp input-group">
+                                            <span class="n2go-input-group-addon">#</span>',
+            '#suffix' => '<button id="styleInputBBC" class="input-group-btn jscolor{valueElement:\'valueInputBBC\', styleElement:\'styleInputBBC\'}">
+                                            </button>
+                                        </div>',
             '#attributes' => array(
-                'class' => array('js-n2go-widget-field', 'color-picker','nl2g-fields'),
+                'class' => array('n2go-colorField', 'form-control', 'n2go-text-right'),
             ),
         ),
-        'colorPicker' => array(
-            '#markup' => '<div id="colorPicker" style="float: left; margin-left: 50px; margin-top: 50px;"></div>',
+
+        'endColorPanel' => array(
+            '#markup' => '</div>
+             </div>',
         ),
-    );
 
-    $string = '<div id="n2goWidget">
-                    <h3>Here is the preview for you</h3>
-                    <div id="n2gButtons">
-                    <input type="button" value="Preview" class="form-submit btn-nl2go" id="btnShowPreview" />
-                    <input type="button" value="Configure Styles" class="form-submit " id="btnShowConfig" />
+        'endN2GoPanel' => array(
+              '#markup' => '</div>',
+        ),
+
+        'endN2GoMainBlock' => array(
+            '#markup' => '</div>',
+        ),
+
+        'preview' => array(
+            '#markup' => '<div class="n2go-block50 main-block">
+            <div class="panel">
+                <div class="panel-heading text-center">
+                    <h3>'. t('This is how your form will look like'). '</h3>
+                </div>
+                <div class="panel-body">
+                    <ul id="n2gButtons" class="nav nav-tabs">
+                        '. ((isset($forms[$formUniqueCode]['type_subscribe']) && $forms[$formUniqueCode]['type_subscribe']) ? '<li id="btnShowPreviewSubscribe" class="active">'. t('Subscription-Form'). '</li>' : '').
+                        ''. ((isset($forms[$formUniqueCode]['type_unsubscribe']) && $forms[$formUniqueCode]['type_unsubscribe']) ? '<li id="btnShowPreviewUnsubscribe" '.(!$active ? 'class="active"' : '').'>'. t('Unsubscription-Form'). '</li>' : '').
+                        '<li id="btnShowConfig" class="">'. t('Source'). '</li>
+                    </ul>
+                    <div id="preview-form-panel" class="preview-pane">
+                        <div id="widgetPreview" '.(!$active ? 'style="display:none"' : '').'>'.
+
+                         (!isset($errorMessage) ? ' <script id="n2g_script_subscribe">
+                                </script>'
+
+                    : '<h3 class="n2go-error-general">'.$errorMessage .'</h3>').
+                        '</div>
+                        <div id="widgetPreviewUnsubscribe" '.($active ? 'style="display:none"' : '').'><script id="n2g_script_unsubscribe"></script></div>
+                        <div id="nl2gStylesConfig" class="preview-pane">
+                            <textarea id="widgetStyleConfig" name="widgetStyleConfig">'.$nl2gStylesConfigObject.'</textarea>
+                        </div>
                     </div>
-                     <script>
-                        !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
-                    </script>
-
-                      <div id="preview-form-panel" class="preview-pane">
-                        <div id="widgetPreview">';
-                        if(isset($formUniqueCode) && trim($formUniqueCode) !== ''){
-
-                            $string .=  '<script id="n2g_script">
-                            </script>';
-                        } else {
-                            $string .= '<h3 class="n2go-error-general">'.$errorMessage.'</h3>';
-                        }
-    $string .=  '</div>
-                    <textarea id="widgetStyleConfig" name="widgetStyleConfig">'.$nl2gStylesConfigObject.'</textarea>
+                    <div>
+                    <a id ="resetStyles" value="resetStyles" class="save-btn n2go-reset-styles-btn" name="resetStyles">'. t('Reset styles') .'</a>
                     </div>
-                    <p>Your subscription form will show up under "blocks". Feel free to place it on any page.</p>
-                    <input type="submit" id="edit-submit" name="op" value="Save subscription form" class="form-submit button-pressed" />
-                </div>';
+                </div>
+            </div>
+        </div>'
+        ),
 
-    $form['widget']['somethingWidgetDemo'] = array(
-        '#markup' => $string,
+        'submit' => array(
+            '#type' => 'submit',
+            '#default_value' => t('Save settings'),
+            '#name' => 'saveSettings',
+            '#prefix' => '</div><div class="n2go-section"><br />',
+            '#suffix' => '</div>',
+            '#attributes' => array(
+                'class' => array('save-btn', 'button', 'button-primary', 'n2go-btn'),
+            ),
+        ),
     );
 
     return $form;
@@ -404,9 +569,9 @@ function newsletter2go_form($form, &$form_state)
  */
 function newsletter2go_form_validate($form, &$form_state)
 {
-    if (empty($form_state['values']['api']['apikey'])) {
-        form_set_error('', t('You must enter API key.'));
-    }
+//    if (empty($form_state['values']['api']['apikey'])) {
+//        form_set_error('', t('You must enter API key.'));
+//    }
 }
 
 /**
@@ -417,13 +582,18 @@ function newsletter2go_form_validate($form, &$form_state)
  */
 function newsletter2go_form_submit($form, &$form_state)
 {
-    variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
-    variable_set('newsletter2go_formUniqueCode', $form_state['values']['api']['formUniqueCode']);
+//    variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
+//    variable_set('newsletter2go_formUniqueCode', $form_state['values']['api']['formUniqueCode']);
+    isset($_POST['formUniqueCode']) ?
+        variable_set('newsletter2go_formUniqueCode', $_POST['formUniqueCode']) : null;
 
     isset($form_state['values']['colors']) ?
             variable_set('newsletter2go_colors', $form_state['values']['colors']) : null;
     isset($_POST['widgetStyleConfig']) ?
             variable_set('newsletter2go_widgetStyleConfig', $_POST['widgetStyleConfig']) : null;
+    if(isset($_POST['resetValues'])){
+        disconnect();
+    }
 }
 
 /**
@@ -501,6 +671,12 @@ function newsletter2go_tokens($type, $tokens, array $data = array(), array $opti
                 case 'plugin':
                     $block = newsletter2go_block_view($type);
                     break;
+                case 'subscribe':
+                    $block = newsletter2go_block_view($type, 'createForm', 'subscribe');
+                    break;
+                case 'unsubscribe':
+                    $block = newsletter2go_block_view($type, 'createForm', 'unsubscribe');
+                    break;
                 case 'popup':
                     $block = newsletter2go_block_view($type, 'createPopup');
                     break;
@@ -514,4 +690,224 @@ function newsletter2go_tokens($type, $tokens, array $data = array(), array $opti
     }
 
     return $replacements;
+}
+
+function generateRandomString($length = 40)
+{
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $charactersLength = strlen($characters);
+    $randomString = '';
+    for ($i = 0; $i < $length; $i++) {
+        $randomString .= $characters[rand(0, $charactersLength - 1)];
+    }
+
+    return $randomString;
+}
+
+/**
+ * Get forms from N2GO API
+ * @param string $authKey
+ * @return array|false
+ */
+
+function getForms($authKey = '')
+{
+    $result = false;
+
+    if (strlen($authKey) > 0) {
+        $form = execute('forms/all?_expand=1', array());
+        if (isset($form['status']) && $form['status'] >= 200 && $form['status'] < 300) {
+            $result = array();
+            foreach ($form['value'] as $value){
+                $key = $value['hash'];
+                $result[$key]['name'] = $value['name'];
+                $result[$key]['hash'] = $value['hash'];
+                $result[$key]['type_subscribe'] = $value['type_subscribe'];
+                $result[$key]['type_unsubscribe'] = $value['type_unsubscribe'];
+            }
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Creates request and returns response. New API and access token
+ *
+ * @param string $action
+ * @param array $post
+ * @return string
+ * @internal param mixed $params
+ */
+function execute($action, $post)
+{
+    $access_token = variable_get('newsletter2go_accessToken');
+    $responseJson = executeRequest($action, $access_token, $post);
+
+    if ($responseJson['status_code'] == 403 || $responseJson['status_code'] == 401 ){
+        refreshTokens();
+        $access_token = variable_get('newsletter2go_accessToken');
+        $responseJson = executeRequest($action, $access_token, $post);
+    }
+
+    return $responseJson;
+}
+
+/**
+ * Creates request and returns response. New API and access token
+ *
+ * @param string $action
+ * @param string $access_token
+ * @param array $post
+ * @return string
+ * @internal param mixed $params
+ */
+
+function executeRequest($action, $access_token, $post){
+
+    $apiUrl = N2GO_API_URL;
+
+    $cURL = curl_init();
+    curl_setopt($cURL, CURLOPT_URL, $apiUrl.$action);
+    curl_setopt($cURL, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($cURL, CURLOPT_HTTPHEADER, array('Authorization: Bearer '.$access_token));
+
+    if(!empty($post)) {
+        $postData = '';
+        foreach ($post as $k => $v) {
+            $postData .= urlencode($k) . '=' . urlencode($v) . '&';
+        }
+        $postData = substr($postData, 0, -1);
+
+        curl_setopt($cURL, CURLOPT_POST, 1);
+        curl_setopt($cURL, CURLOPT_POSTFIELDS, $postData);
+    }
+
+    curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, false);
+    $response = curl_exec($cURL);
+    $response = json_decode($response, true);
+    $status = curl_getinfo($cURL);
+    $response['status_code'] = $status['http_code'];
+
+    curl_close($cURL);
+
+    return $response;
+
+}
+
+
+/**
+ * Creates request and returns response, refresh access token
+ *
+ * @return true
+ * @internal param mixed $params
+ */
+function refreshTokens() {
+
+    $authKey = variable_get('newsletter2go_authKey');
+    $auth = base64_encode($authKey);
+    $refreshToken = variable_get('newsletter2go_refreshToken');
+    $refreshPost = array(
+        'refresh_token' => $refreshToken,
+        'grant_type' => N2GO_REFRESH_GRANT_TYPE
+    );
+    $post = http_build_query($refreshPost);
+
+    $url = N2GO_API_URL.'oauth/v2/token';
+
+    $header = array('Authorization: Basic '.$auth, 'Content-Type: application/x-www-form-urlencoded');
+
+    $curl = curl_init($url);
+    curl_setopt($curl, CURLOPT_HTTPHEADER, $header);
+
+    curl_setopt($curl, CURLOPT_POST, true);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+    $json_response = curl_exec($curl);
+    curl_close($curl);
+
+    $response = json_decode($json_response);
+
+
+    if(isset($response->access_token) && !empty($response->access_token)) {
+        variable_set('newsletter2go_accessToken', $response->access_token);
+    }
+    if(isset($response->refresh_token) && !empty($response->refresh_token)) {
+        variable_set('newsletter2go_refreshToken', $response->refresh_token);
+    }
+
+    return true;
+}
+
+/**
+ * Reset the values that are set when callback is made
+ *
+ */
+function disconnect(){
+
+    variable_set('newsletter2go_authKey', null);
+    variable_set('newsletter2go_accessToken', null);
+    variable_set('newsletter2go_refreshToken', null);
+    variable_set('newsletter2go_formUniqueCode', null);
+    variable_set('newsletter2go_widgetStyleConfig', null);
+
+}
+
+/**
+ * This function sets widgetStyleConfig to default value
+ */
+function _reset_styles(){
+
+    $style = $_POST['style'];
+    variable_set('newsletter2go_widgetStyleConfig', $style);
+    print 'success';
+    drupal_exit();
+}
+/**
+ * Implements hook_block_configure().
+ */
+function newsletter2go_block_configure($delta='') {
+
+    $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
+    $formType = variable_get('newsletter2go_formType');
+    $authKey = variable_get('newsletter2go_authKey');
+    $forms = getForms($authKey);
+    $options = array();
+
+    foreach ($forms as $f){
+        if ($formUniqueCode == $f['hash']){
+            $subscribe = $f['type_subscribe'];
+            $unsubscribe = $f['type_unsubscribe'];
+        }
+    }
+
+    $subscribe == true ? $options['subscribe'] = t('Subscribe-Form') : '';
+    $unsubscribe == true ? $options['unsubscribe'] = t('Unsubscribe-Form') : '';
+
+    $form = array();
+
+    switch($delta) {
+        case 'newsletter2go' :
+            // Text field form element
+            $form['form_type'] = array(
+                '#type' => 'select',
+                '#title' => t('Form type'),
+                '#default_value' => $formType,
+                '#options' => $options
+            );
+
+    }
+    return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function newsletter2go_block_save($delta = '', $edit = array()) {
+    switch($delta) {
+        case 'newsletter2go' :
+            variable_set('newsletter2go_formType', $edit['form_type']);
+            break;
+    }
 }
