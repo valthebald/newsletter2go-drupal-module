@@ -31,6 +31,7 @@ function newsletter2go_block_info()
 function newsletter2go_block_view($delta = '', $func = 'createForm', $type = '')
 {
     $block = array();
+    static $nl2go_scriptAdded = 0;
 
     switch ($delta) {
         case 'newsletter2go':
@@ -42,19 +43,16 @@ function newsletter2go_block_view($delta = '', $func = 'createForm', $type = '')
                 !empty($formType) ? $type = $formType : $type = 'subscribe';
             }
 
-            empty($func) ? $func = 'createForm' : '';
-            $uniqueId = uniqid();
+            $func = $func ? $func : 'createForm';
+            $uniqueId = $func == 'createForm' ? uniqid() : null;
 
-            $params = "'$type:$func', " . $n2gConfig;
-            if ($func == 'createPopup') {
-                $params .= ", 5"; // '5' seconds delay
-            }
-
+            $params = "\"$type:$func\", " . $n2gConfig;
+            $scriptInit = $nl2go_scriptAdded ? '' : '!function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static-staging.newsletter2go.com/utils.js","n2g");';
+            $nl2go_scriptAdded = 1;
             $block['subject'] = t('Newsletter2Go');
-            $block['content'] = '<script id="' . ($uniqueId ? $uniqueId : "n2g_script") . '">
-                !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static-staging.newsletter2go.com/utils.js","n2g");
-                n2g(\'create\',\'' . $formUniqueCode . '\');
-                n2g(' . $params . '' . ($uniqueId ? ',"' . $uniqueId . '"' : "") . ');
+            $block['content'] = '<script id="' . ($uniqueId ? $uniqueId : "n2g_script") . '">' . $scriptInit .
+                'n2g(\'create\',\'' . $formUniqueCode . '\');
+                n2g(' . $params . '' . ($uniqueId ? ', "' . $uniqueId . '"' : "") . ($func == 'createPopup' ? ', 5' : ', null') .');
                         </script>';
     }
 
@@ -664,29 +662,27 @@ function newsletter2go_token_info()
 function newsletter2go_tokens($type, $tokens, array $data = array(), array $options = array())
 {
     $replacements = array();
+    if ($type !== 'newsletter2go') {
+        return $replacements;
+    }
 
-    if ($type == 'newsletter2go') {
-        foreach ($tokens as $name => $original) {
-            switch ($name) {
-                case 'plugin':
-                    $block = newsletter2go_block_view($type);
-                    break;
-                case 'subscribe':
-                    $block = newsletter2go_block_view($type, 'createForm', 'subscribe');
-                    break;
-                case 'unsubscribe':
-                    $block = newsletter2go_block_view($type, 'createForm', 'unsubscribe');
-                    break;
-                case 'popup':
-                    $block = newsletter2go_block_view($type, 'createPopup');
-                    break;
-                default:
-                    $block['content'] = "<p style='color:red;'>Wrong short code parameter <b>$name</b> - should be 'plugin' or 'popup'</p>";
-            }
-
-            $replacements[$original] = $block['content'];
+    foreach ($tokens as $name => $original) {
+        $parts = explode(':', $name);
+        if (!in_array($parts[0], array('plugin', 'popup'))) {
+            $block['content'] = "<p style='color:red;'>Wrong short code type parameter <b>$parts[0]</b> - should be 'plugin' or 'popup'</p>";
+            continue;
         }
 
+        $codeType = $parts[0] === 'plugin' ? 'createForm' : 'createPopup';
+        $formType = isset($parts[1]) ? $parts[1] : 'subscribe';
+        if (!in_array($formType, array('subscribe', 'unsubscribe'))) {
+            $block['content'] = "<p style='color:red;'>Wrong short code form type parameter <b>$formType</b> - should be 'subscribe' or 'unsubscribe'</p>";
+            continue;
+        }
+
+        $block = newsletter2go_block_view($type, $codeType, $formType);
+
+        $replacements[$original] = $block['content'];
     }
 
     return $replacements;
