@@ -6,76 +6,6 @@ const N2GO_REFRESH_GRANT_TYPE = 'https://nl2go.com/jwt_refresh';
 const N2GO_PLUGIN_VERSION = 4000;
 
 /**
- * Return block info.
- *
- * @return mixed
- */
-function newsletter2go_block_info()
-{
-    $blocks['newsletter2go'] = array(
-        'info' => t('Newsletter2Go'),
-        'cache' => DRUPAL_CACHE_PER_ROLE,
-    );
-
-    return $blocks;
-}
-
-/**
- * Return block view.
- *
- * @param string $delta
- * @param string $func
- * @param string $type
- * @return array
- */
-function newsletter2go_block_view($delta = '', $func = 'createForm', $type = '')
-{
-    $block = array();
-
-    switch ($delta) {
-        case 'newsletter2go':
-            $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
-            $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
-
-            $formType = variable_get('newsletter2go_formType');
-            if (empty($type)) {
-                !empty($formType) ? $type = $formType : $type = 'subscribe';
-            }
-
-            empty($func) ? $func = 'createForm' : '';
-            $uniqueId = uniqid();
-
-            $params = "'$type:$func', " . $n2gConfig;
-            if ($func == 'createPopup') {
-                $params .= ", 5"; // '5' seconds delay
-            }
-
-            $block['subject'] = t('Newsletter2Go');
-            $block['content'] = '<script id="' . ($uniqueId ? $uniqueId : "n2g_script") . '">
-                !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
-                n2g(\'create\',\'' . $formUniqueCode . '\');
-                n2g(' . $params . '' . ($uniqueId ? ',"' . $uniqueId . '"' : "") . ');
-                        </script>';
-    }
-
-    return $block;
-}
-
-/**
- * Check permission.
- *
- * @return array
- */
-function newsletter2go_permission()
-{
-    return array(
-        'access newsletter2go content' => array(
-            'title' => t('Access content for the newsletter2go module'),
-        ),
-    );
-}
-
-/**
  * Returns menu.
  *
  * @return array
@@ -83,15 +13,6 @@ function newsletter2go_permission()
 function newsletter2go_menu()
 {
     $items = array();
-
-    $items['admin/config/content/newsletter2go'] = array(
-        'title' => 'Newsletter2Go',
-        'description' => 'API page for newsletter2go module',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('newsletter2go_form'),
-        'access arguments' => array('access administration pages'),
-        'type' => MENU_NORMAL_ITEM,
-    );
 
     $items['n2go/widget'] = array(
         'title' => 'Widget Preview',

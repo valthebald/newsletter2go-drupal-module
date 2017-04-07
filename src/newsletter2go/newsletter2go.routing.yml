@@ -1,0 +1,8 @@
+newsletter2go.config:
+  path: '/admin/config/content/newsletter2go'
+  defaults:
+    _form: '\Drupal\newsletter2go\Form\ConfigForm'
+    _title: 'Newsletter2Go'
+    _description: 'API page for newsletter2go module'
+  requirements:
+    _permission: 'access administration pages'
