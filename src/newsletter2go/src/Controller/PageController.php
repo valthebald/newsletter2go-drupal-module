@@ -85,7 +85,7 @@ class PageController extends ControllerBase {
 
     $post['key'] = $config->get('apikey');
     $post['doicode'] = $config->get('doicode');
-    $response = executeN2Go('create/recipient', $post);
+    $response = Api::getInstance()->executeN2Go('create/recipient', $post);
 
     $result = array('success' => $response['success']);
     if (!$response) {
