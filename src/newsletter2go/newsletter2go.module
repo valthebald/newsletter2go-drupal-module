@@ -22,42 +22,6 @@ function newsletter2go_page_alter(&$page)
 }
 
 /**
- * Validate form.
- *
- * @param $form
- * @param $form_state
- */
-function newsletter2go_form_validate($form, &$form_state)
-{
-//    if (empty($form_state['values']['api']['apikey'])) {
-//        form_set_error('', t('You must enter API key.'));
-//    }
-}
-
-/**
- * Form submit action.
- *
- * @param $form
- * @param $form_state
- */
-function newsletter2go_form_submit($form, &$form_state)
-{
-    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
-//    variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
-//    variable_set('newsletter2go_formUniqueCode', $form_state['values']['api']['formUniqueCode']);
-    isset($_POST['formUniqueCode']) ?
-        $config_factory->set('formUniqueCode', $_POST['formUniqueCode']) : null;
-
-    isset($form_state['values']['colors']) ?
-        $config_factory->set('colors', $form_state['values']['colors']) : null;
-    isset($_POST['widgetStyleConfig']) ?
-        $config_factory->set('widgetStyleConfig', $_POST['widgetStyleConfig']) : null;
-    if (isset($_POST['resetValues'])) {
-        disconnect();
-    }
-}
-
-/**
  * Creates request and returns response.
  *
  * @param string $action
@@ -303,21 +267,6 @@ function refreshTokens()
     }
 
     return true;
-}
-
-/**
- * Reset the values that are set when callback is made
- *
- */
-function disconnect()
-{
-    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
-    $config_factory->set('authkey', null);
-    $config_factory->set('accessToken', null);
-    $config_factory->set('refreshToken', null);
-    $config_factory->set('formUniqueCode', null);
-    $config_factory->set('widgetStyleConfig', null);
-
 }
 
 /**

@@ -391,13 +391,48 @@ class ConfigForm extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function submitForm(array &$form, FormStateInterface $form_state) {
-    $this->config('system.maintenance')
-      ->set('message', $form_state->getValue('maintenance_mode_message'))
-      ->save();
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    if (!$form_state->hasValue('apikey')) {
+      $form_state->setErrorByName('apikey', t('You must enter API key'));
+    }
+    parent::validateForm($form, $form_state);
+  }
 
-    $this->state->set('system.maintenance_mode', $form_state->getValue('maintenance_mode'));
+  /**
+   * {@inheritdoc}
+   */
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    if ($form_state->getValue('resetValues')) {
+      // Reset default values to NULL.
+      $this->resetValues();
+      parent::submitForm($form, $form_state);
+      return;
+    }
+    $config_factory = \Drupal::configFactory()
+      ->getEditable('newsletter2go.config');
+    foreach ([
+               'formUniqueCode',
+               'colors',
+               'widgetStyleConfig',
+               'apikey',
+               'formUniqueCode',
+             ] as $name) {
+      // We also have to submit null values.
+      $config_factory->set($name, $form_state->getValue($name));
+    }
+
     parent::submitForm($form, $form_state);
   }
 
+  /**
+   * Helper function to reset values.
+   */
+  protected function resetValues() {
+    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
+    $config_factory->set('authkey', null);
+    $config_factory->set('accessToken', null);
+    $config_factory->set('refreshToken', null);
+    $config_factory->set('formUniqueCode', null);
+    $config_factory->set('widgetStyleConfig', null);
+  }
 }
