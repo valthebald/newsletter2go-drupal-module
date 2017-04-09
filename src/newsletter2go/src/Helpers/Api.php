@@ -68,7 +68,7 @@ class Api {
         if (empty($this->postParams['id']) && is_int($this->postParams['id'])) {
             return null;
         }
-        
+        // @todo: refactor database calls.
         $id = $this->postParams['id'];
         $query = db_select('node', 'n');
         $query->leftJoin('field_data_body', 'd', 'd.entity_id = n.nid');
