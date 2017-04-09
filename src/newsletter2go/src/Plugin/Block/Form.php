@@ -34,6 +34,7 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static(
+      $container,
       $configuration,
       $plugin_id,
       $plugin_definition
@@ -44,22 +45,29 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
    * {@inheritdoc}
    */
   public function defaultConfiguration() {
-    // By default, the block will contain 10 feed items.
     return [
-      'block_count' => 10,
-      'feed' => NULL,
+      'form_type' => NULL,
     ];
   }
-
 
   /**
    * {@inheritdoc}
    */
-  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+  protected function blockAccess(AccountInterface $account) {
+    return AccessResult::allowedIfHasPermission($account, 'access newsletter2go content');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function blockForm($form, FormStateInterface $form_state) {
     $config = \Drupal::config('newsletter2go.config');
     $formUniqueCode = $config->get('formUniqueCode');
 
     $forms = Api::getInstance()->getForms($config->get('authkey'));
+    if (empty($forms)) {
+      return parent::blockForm($form, $form_state);
+    }
     $options = [];
     $subscribe = $unsubscribe = FALSE;
     foreach ($forms as $form) {
@@ -79,55 +87,14 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
       '#options' => $options,
     );
 
-    return parent::buildConfigurationForm($form, $form_state);
-  }
-  
-  /**
-   * {@inheritdoc}
-   */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $form_state->getValue('form_type'));
-    parent::submitConfigurationForm($form, $form_state);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function blockAccess(AccountInterface $account) {
-    return AccessResult::allowedIfHasPermission($account, 'access newsletter2go content');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function blockForm($form, FormStateInterface $form_state) {
-    $feeds = $this->feedStorage->loadMultiple();
-    $options = [];
-    foreach ($feeds as $feed) {
-      $options[$feed->id()] = $feed->label();
-    }
-    $form['feed'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Select the feed that should be displayed'),
-      '#default_value' => $this->configuration['feed'],
-      '#options' => $options,
-    ];
-    $range = range(2, 20);
-    $form['block_count'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Number of news items in block'),
-      '#default_value' => $this->configuration['block_count'],
-      '#options' => array_combine($range, $range),
-    ];
-    return $form;
+    return parent::blockForm($form, $form_state);
   }
 
   /**
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
-    $this->configuration['block_count'] = $form_state->getValue('block_count');
-    $this->configuration['feed'] = $form_state->getValue('feed');
+    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $form_state->getValue('form_type'));
   }
 
   /**
@@ -151,13 +118,19 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
       $params .= ", 5"; // '5' seconds delay
     }
 
-    $block['subject'] = t('Newsletter2Go');
-    $block['content'] = '<script id="' . ($uniqueId ? $uniqueId : "n2g_script") . '">
-     !function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
-     n2g(\'create\',\'' . $formUniqueCode . '\');
-     n2g(' . $params . '' . ($uniqueId ? ',"' . $uniqueId . '"' : "") . ');
-     </script>';
+    $block['subject']['#markup'] = t('<h2>Newsletter2Go</h2>');
 
+    $block['newsletter2go_script'] = [
+      [
+        '#type' => 'html_tag',
+        '#tag' => 'script',
+        '#value' => '!function(e,t,n,c,r,a,i){e.Newsletter2GoTrackingObject=r,e[r]=e[r]||function(){(e[r].q=e[r].q||[]).push(arguments)},e[r].l=1*new Date,a=t.createElement(n),i=t.getElementsByTagName(n)[0],a.async=1,a.src=c,i.parentNode.insertBefore(a,i)}(window,document,"script","//static.newsletter2go.com/utils.js","n2g");
+     n2g(\'create\',\'' . $formUniqueCode . '\');
+     n2g(' . $params . '' . ($uniqueId ? ',"' . $uniqueId . '"' : "") . ');',
+        '#attributes' => array('id' => ($uniqueId ? $uniqueId : "n2g_script")),
+      ],
+      'newsletter2go_script'
+    ];
     return $block;
   }
 
