@@ -94,10 +94,11 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
    * {@inheritdoc}
    */
   public function build() {
-    $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
-    $n2gConfig = variable_get('newsletter2go_widgetStyleConfig');
+    $config = \Drupal::config('newsletter2go.config');
+    $formUniqueCode = $config->get('formUniqueCode');
+    $n2gConfig = $config->get('widgetStyleConfig');
 
-    $formType = variable_get('newsletter2go_formType');
+    $formType = $config->get('formType');
     if (empty($type)) {
       !empty($formType) ? $type = $formType : $type = 'subscribe';
     }

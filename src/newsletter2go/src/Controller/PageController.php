@@ -50,9 +50,10 @@ class PageController extends ControllerBase {
   {
     $notFound = false;
     $noValidEmail = false;
-    $attributes = variable_get('newsletter2go_fields');
-    $requiredFields = variable_get('newsletter2go_required');
-    $texts = variable_get('newsletter2go_texts');
+    $config = \Drupal::config('newsletter2go.config');
+    $attributes = $config->get('fields');
+    $requiredFields = $config->get('required');
+    $texts = $config->get('texts');
     $post = array();
     foreach ($attributes as $k => $v) {
       if (!empty($requiredFields[$k]) && empty($_POST[$k])) {
@@ -79,8 +80,8 @@ class PageController extends ControllerBase {
       drupal_exit();
     }
 
-    $post['key'] = variable_get('newsletter2go_apikey');
-    $post['doicode'] = variable_get('newsletter2go_doicode');
+    $post['key'] = $config->get('apikey');
+    $post['doicode'] = $config->get('doicode');
     $response = executeN2Go('create/recipient', $post);
 
     $result = array('success' => $response['success']);
@@ -113,7 +114,7 @@ class PageController extends ControllerBase {
    */
   function resetStyles() {
     $style = $_POST['style'];
-    variable_set('newsletter2go_widgetStyleConfig', $style);
+    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('widgetStyleConfig', $style);
     print 'success';
     drupal_exit();
   }
