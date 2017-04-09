@@ -24,6 +24,7 @@ class PageController extends ControllerBase {
     return [
       '#type' => 'markup',
       '#markup' => urldecode($_GET['widget']),
+      '#attached' => ['library' => ['newsletter2go/widget']],
     ];
   }
 

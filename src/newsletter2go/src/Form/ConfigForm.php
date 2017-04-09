@@ -79,6 +79,8 @@ class ConfigForm extends ConfigFormBase {
     $formUniqueCode = $config->get('formUniqueCode');
     $nl2gStylesConfigObject = $config->get('widgetStyleConfig');
 
+    $form['#attached']['library'][] = 'newsletter2go/admin';
+
     $queryParams['version'] = N2GO_PLUGIN_VERSION;
     $queryParams['apiKey'] = $apiKey;
 

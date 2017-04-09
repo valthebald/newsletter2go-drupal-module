@@ -22,40 +22,6 @@ function newsletter2go_page_alter(&$page)
 }
 
 /**
- * Newsletter2go init.
- */
-function newsletter2go_init()
-{
-    $path = drupal_get_path('module', 'newsletter2go');
-    if (arg(0) == 'admin' && arg(3) == 'newsletter2go') {
-        drupal_add_js($path . '/jscolor.min.js');
-        drupal_add_js($path . '/newsletter2go_default.js');
-        drupal_add_js($path . '/newsletter2go.js');
-        drupal_add_css($path . '/font-awesome.css');
-        drupal_add_css($path . '/newsletter2go.css');
-    }
-
-    if (strpos($_SERVER['REQUEST_URI'], url('n2go/widget')) === 0) {
-        drupal_add_js($path . '/newsletter2go_widget.js');
-    }
-
-    drupal_add_js($path . '/newsletter2go_ajax.js');
-}
-
-/**
- * Returns newsletter2go form.
- * @param $form
- * @param $form_state
- * @return mixed
- */
-function newsletter2go_form($form, &$form_state)
-{
-
-
-    return $form;
-}
-
-/**
  * Validate form.
  *
  * @param $form
