@@ -7,6 +7,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\State\StateInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\newsletter2go\Helpers\Api;
 use Drupal\user\PermissionHandlerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -30,6 +31,13 @@ class ConfigForm extends ConfigFormBase {
   protected $permissionHandler;
 
   /**
+   * Helper object.
+   * 
+   * @var Api
+   */
+  protected $helper;
+  
+  /**
    * Constructs a new SiteMaintenanceModeForm.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -43,6 +51,7 @@ class ConfigForm extends ConfigFormBase {
     parent::__construct($config_factory);
     $this->state = $state;
     $this->permissionHandler = $permission_handler;
+    $this->helper = Api::getInstance();
   }
 
   /**
@@ -96,7 +105,7 @@ class ConfigForm extends ConfigFormBase {
     $apiConnectUrl = N2GO_INTEGRATION_URL . '?' . http_build_query($queryParams);
 
     $authKey = $config->get('authkey');
-    $forms = getForms($authKey);
+    $forms = $this->helper->getForms($authKey);
 
     $hasForms = true;
     if ($forms === false) {
@@ -109,7 +118,7 @@ class ConfigForm extends ConfigFormBase {
       $selectForms[$f['hash']] = $f['name'];
     }
 
-    $response = executeN2Go('get/attributes', array('key' => $apiKey));
+    $response = $this->helper->executeN2Go('get/attributes', array('key' => $apiKey));
     $color = $response['success'] ? 'greenyellow' : 'yellow';
 
 

@@ -123,4 +123,172 @@ class Api {
         return $this->version;
     }
 
+    /**
+     * Creates request and returns response. New API and access token.
+     *
+     * @param string $action
+     * @param array $post
+     * 
+     * @return string
+     */
+    public function execute($action, $post) {
+        $config = \Drupal::config('newsletter2go.config');
+        $access_token = $config->get('accessToken');
+        $responseJson = $this->executeRequest($action, $access_token, $post);
+
+        if ($responseJson['status_code'] == 403 || $responseJson['status_code'] == 401) {
+            $this->refreshTokens();
+            $access_token = $config->get('accessToken');
+            $responseJson = $this->executeRequest($action, $access_token, $post);
+        }
+
+        return $responseJson;
+    }
+
+    /**
+     * Creates request and returns response. New API and access token.
+     *
+     * @param string $action
+     * @param string $access_token
+     * @param array $post
+     * 
+     * @return string
+     * 
+     * @internal param mixed $params
+     */
+    private function executeRequest($action, $access_token, $post) {
+        $apiUrl = N2GO_API_URL;
+        
+        $cURL = curl_init();
+        curl_setopt($cURL, CURLOPT_URL, $apiUrl . $action);
+        curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($cURL, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $access_token));
+
+        if (!empty($post)) {
+            $postData = '';
+            foreach ($post as $k => $v) {
+                $postData .= urlencode($k) . '=' . urlencode($v) . '&';
+            }
+            $postData = substr($postData, 0, -1);
+
+            curl_setopt($cURL, CURLOPT_POST, 1);
+            curl_setopt($cURL, CURLOPT_POSTFIELDS, $postData);
+        }
+
+        curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
+        $response = curl_exec($cURL);
+        $response = json_decode($response, TRUE);
+        $status = curl_getinfo($cURL);
+        $response['status_code'] = $status['http_code'];
+
+        curl_close($cURL);
+
+        return $response;
+    }
+
+    /**
+     * Creates request and returns response, refresh access token.
+     *
+     * @return bool
+     * 
+     * @internal param mixed $params
+     */
+    private function refreshTokens() {
+        $config = \Drupal::config('newsletter2go.config');
+        $config_factory = \Drupal::configFactory()
+          ->getEditable('newsletter2go.config');
+        $authKey = $config->get('authkey');
+        $auth = base64_encode($authKey);
+        $refreshToken = $config->get('refreshToken');
+        $refreshPost = array(
+          'refresh_token' => $refreshToken,
+          'grant_type' => N2GO_REFRESH_GRANT_TYPE,
+        );
+        $post = http_build_query($refreshPost);
+
+        $url = N2GO_API_URL . 'oauth/v2/token';
+
+        $header = array(
+          'Authorization: Basic ' . $auth,
+          'Content-Type: application/x-www-form-urlencoded'
+        );
+
+        $curl = curl_init($url);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, $header);
+
+        curl_setopt($curl, CURLOPT_POST, TRUE);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+        $json_response = curl_exec($curl);
+        curl_close($curl);
+
+        $response = json_decode($json_response);
+
+
+        if (isset($response->access_token) && !empty($response->access_token)) {
+            $config_factory->set('accessToken', $response->access_token);
+        }
+        if (isset($response->refresh_token) && !empty($response->refresh_token)) {
+            $config_factory->set('refreshToken', $response->refresh_token);
+        }
+
+        return TRUE;
+    }
+
+    /**
+     * Creates request and returns response.
+     *
+     * @param string $action
+     * @param mixed $post
+     * 
+     * @return array
+     */
+    public function executeN2Go($action, $post) {
+        $cURL = curl_init();
+        curl_setopt($cURL, CURLOPT_URL, "https://www.newsletter2go.com/en/api/$action/");
+        curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);
+
+        $postData = '';
+        foreach ($post as $k => $v) {
+            $postData .= urlencode($k) . '=' . urlencode($v) . '&';
+        }
+        $postData = substr($postData, 0, -1);
+
+        curl_setopt($cURL, CURLOPT_POST, 1);
+        curl_setopt($cURL, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
+
+        $response = curl_exec($cURL);
+        curl_close($cURL);
+
+        return json_decode($response, TRUE);
+    }
+
+    /**
+     * Get forms from N2GO API.
+     * 
+     * @param string $authKey
+     * @return array|false
+     */
+    public function getForms($authKey = '') {
+        $result = FALSE;
+
+        if (strlen($authKey) > 0) {
+            $form = $this->execute('forms/all?_expand=1', array());
+            if (isset($form['status']) && $form['status'] >= 200 && $form['status'] < 300) {
+                $result = array();
+                foreach ($form['value'] as $value) {
+                    $key = $value['hash'];
+                    $result[$key]['name'] = $value['name'];
+                    $result[$key]['hash'] = $value['hash'];
+                    $result[$key]['type_subscribe'] = $value['type_subscribe'];
+                    $result[$key]['type_unsubscribe'] = $value['type_unsubscribe'];
+                }
+            }
+        }
+
+        return $result;
+    }
+
 }

@@ -8,6 +8,7 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\newsletter2go\Helpers\Api;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -48,6 +49,45 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
       'block_count' => 10,
       'feed' => NULL,
     ];
+  }
+
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    $config = \Drupal::config('newsletter2go.config');
+    $formUniqueCode = $config->get('formUniqueCode');
+
+    $forms = Api::getInstance()->getForms($config->get('authkey'));
+    $options = [];
+    $subscribe = $unsubscribe = FALSE;
+    foreach ($forms as $form) {
+      if ($formUniqueCode == $form['hash']) {
+        $subscribe = $form['type_subscribe'];
+        $unsubscribe = $form['type_unsubscribe'];
+      }
+    }
+
+    $subscribe == TRUE ? $options['subscribe'] = t('Subscribe-Form') : '';
+    $unsubscribe == TRUE ? $options['unsubscribe'] = t('Unsubscribe-Form') : '';
+
+    $form['form_type'] = array(
+      '#type' => 'select',
+      '#title' => t('Form type'),
+      '#default_value' => $config->get('formType'),
+      '#options' => $options,
+    );
+
+    return parent::buildConfigurationForm($form, $form_state);
+  }
+  
+  /**
+   * {@inheritdoc}
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $form_state->getValue('form_type'));
+    parent::submitConfigurationForm($form, $form_state);
   }
 
   /**
