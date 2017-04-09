@@ -116,7 +116,7 @@ class Api {
 
     protected function checkApiKey()
     {
-        return variable_get('newsletter2go_apikey') === $this->apikey;
+      return $this->apikey === \Drupal::config('newsletter2go.config')->get('apikey');
     }
 
     protected function getPluginVersion(){

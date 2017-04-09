@@ -38,7 +38,6 @@ class PageController extends ControllerBase {
    * Process callback.
    */
   public function goCallback() {
-    require_once __DIR__ . '/newsletter2goCallback.php';
     $instance = Callback::getInstance();
     $instance->processCallback($_POST);
   }
