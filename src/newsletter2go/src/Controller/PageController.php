@@ -3,6 +3,8 @@
 namespace Drupal\newsletter2go\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\newsletter2go\Helpers\Api;
+use Drupal\newsletter2go\Helpers\Callback;
 
 /**
  * Class PageController.
@@ -28,8 +30,7 @@ class PageController extends ControllerBase {
    * Process instance authorization.
    */
   public function apiGo() {
-    require_once __DIR__ . '/newsletter2goApi.php';
-    $instance = Newsletter2GoApi::getInstance();
+    $instance = Api::getInstance();
     $instance->processRequest($_SERVER['PHP_AUTH_USER'], $_GET, $_POST);
   }
 
@@ -38,7 +39,7 @@ class PageController extends ControllerBase {
    */
   public function goCallback() {
     require_once __DIR__ . '/newsletter2goCallback.php';
-    $instance = Newsletter2GoCallback::getInstance();
+    $instance = Callback::getInstance();
     $instance->processCallback($_POST);
   }
 

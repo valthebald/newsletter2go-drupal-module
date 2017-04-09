@@ -1,13 +1,8 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: mareike
- * Date: 29.04.2015
- * Time: 14:29
- */
 
-class Nl2go_ResponseHelper {
+namespace Drupal\newsletter2go\Helpers;
 
+class ResponseHelper {
     /**
      * err-number, that should be pulled, whenever credentials are missing
      */

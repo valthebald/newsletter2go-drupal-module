@@ -1,9 +1,8 @@
 <?php
 
-require_once __DIR__.'/Nl2go_ResponseHelper.php';
+namespace Drupal\newsletter2go\Helpers;
 
-class Newsletter2GoApi
-{
+class Api {
     private $version = 4000;
     private static $instance = null;
     private $getParams;
@@ -17,7 +16,7 @@ class Newsletter2GoApi
 
     public static function getInstance()
     {
-        return self::$instance ? : new Newsletter2GoApi();
+        return self::$instance ? : new Api();
     }
 
     public function processRequest($apikey, $getParams, $postParams)
@@ -31,7 +30,7 @@ class Newsletter2GoApi
         $result = array('success' => 1);
 
         if (!$this->checkApiKey()) {
-            $result = Nl2go_ResponseHelper::generateErrorResponse('Invalid or missing API key!',Nl2go_ResponseHelper::ERRNO_PLUGIN_CREDENTIALS_WRONG);
+            $result = ResponseHelper::generateErrorResponse('Invalid or missing API key!',ResponseHelper::ERRNO_PLUGIN_CREDENTIALS_WRONG);
         } else {
             switch ($this->postParams['action']) {
                 case 'test':
@@ -40,17 +39,17 @@ class Newsletter2GoApi
                 case 'getPost':
                     $post = $this->getPost();
                     if (!$post) {
-                        $result = Nl2go_ResponseHelper::generateErrorResponse('Post with given id not found!',Nl2go_ResponseHelper::ERRNO_PLUGIN_OTHER);
+                        $result = ResponseHelper::generateErrorResponse('Post with given id not found!',ResponseHelper::ERRNO_PLUGIN_OTHER);
                     }else{
-                        $result = Nl2go_ResponseHelper::generateSuccessResponse(array('post' => $post));
+                        $result = ResponseHelper::generateSuccessResponse(array('post' => $post));
                     }
                     break;
                 case 'getPluginVersion':
                     $version = $this->getPluginVersion();
-                    $result = Nl2go_ResponseHelper::generateSuccessResponse(array('version' => $version));
+                    $result = ResponseHelper::generateSuccessResponse(array('version' => $version));
                     break;
                 default:
-                    $result = Nl2go_ResponseHelper::generateErrorResponse('Invalid action!',Nl2go_ResponseHelper::ERRNO_PLUGIN_OTHER);
+                    $result = ResponseHelper::generateErrorResponse('Invalid action!',ResponseHelper::ERRNO_PLUGIN_OTHER);
                     break;
             }
         }

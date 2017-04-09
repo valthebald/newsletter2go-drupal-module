@@ -1,7 +1,8 @@
 <?php
 
+namespace Drupal\newsletter2go\Helpers;
 
-class Newsletter2GoCallback
+class Callback
 {
     private static $instance = null;
 
@@ -12,7 +13,7 @@ class Newsletter2GoCallback
 
     public static function getInstance()
     {
-        return self::$instance ? : new Newsletter2GoCallback();
+        return self::$instance ? : new Callback();
     }
 
     public function processCallback($postParams)
