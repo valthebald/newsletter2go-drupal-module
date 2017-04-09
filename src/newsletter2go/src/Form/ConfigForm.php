@@ -93,7 +93,7 @@ class ConfigForm extends ConfigFormBase {
 
     $apiConnectUrl = N2GO_INTEGRATION_URL . '?' . http_build_query($queryParams);
 
-    $authKey = $config->get('authKey');
+    $authKey = $config->get('authkey');
     $forms = getForms($authKey);
 
     $hasForms = true;

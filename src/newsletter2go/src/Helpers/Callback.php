@@ -21,7 +21,7 @@ class Callback
         $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
         if (isset($postParams['auth_key']) && !empty($postParams['auth_key'])) {
             $authKey = $postParams['auth_key'];
-            $config_factory->set('authKey', $authKey.':foo');
+            $config_factory->set('authkey', $authKey.':foo');
         }        
         if (isset($postParams['access_token']) && !empty($postParams['access_token'])) {
             $accessToken = $postParams['access_token'];

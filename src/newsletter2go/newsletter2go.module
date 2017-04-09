@@ -303,7 +303,7 @@ function refreshTokens()
 {
     $config = \Drupal::config('newsletter2go.config');
     $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
-    $authKey = $config->get('authKey');
+    $authKey = $config->get('authkey');
     $auth = base64_encode($authKey);
     $refreshToken = $config->get('refreshToken');
     $refreshPost = array(
@@ -346,7 +346,7 @@ function refreshTokens()
 function disconnect()
 {
     $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
-    $config_factory->set('authKey', null);
+    $config_factory->set('authkey', null);
     $config_factory->set('accessToken', null);
     $config_factory->set('refreshToken', null);
     $config_factory->set('formUniqueCode', null);
@@ -362,7 +362,7 @@ function newsletter2go_block_configure($delta = '')
     $config = \Drupal::config('newsletter2go.config');
     $formUniqueCode = $config->get('formUniqueCode');
     $formType = $config->get('formType');
-    $authKey = $config->get('authKey');
+    $authKey = $config->get('authkey');
     $forms = getForms($authKey);
     $options = array();
 
