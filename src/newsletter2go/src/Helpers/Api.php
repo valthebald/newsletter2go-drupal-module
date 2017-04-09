@@ -9,18 +9,17 @@ class Api {
     private $postParams;
     private $apikey;
 
-    private function __construct()
-    {
-        
+    private $logger;
+
+    private function __construct() {
+      $this->logger = \Drupal::logger('newsletter2go');
     }
 
-    public static function getInstance()
-    {
+    public static function getInstance() {
         return self::$instance ? : new Api();
     }
 
-    public function processRequest($apikey, $getParams, $postParams)
-    {
+    public function processRequest($apikey, $getParams, $postParams) {
         $this->apikey = $apikey;
         if($apikey == null && isset($postParams['apikey'])){
             $this->apikey = $postParams['apikey'];
@@ -177,6 +176,7 @@ class Api {
 
         curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
         $response = curl_exec($cURL);
+        $this->logger->debug(__LINE__ . $action . '_' . $postData . "\r\n" . $response);
         $response = json_decode($response, TRUE);
         $status = curl_getinfo($cURL);
         $response['status_code'] = $status['http_code'];
@@ -221,6 +221,7 @@ class Api {
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
         $json_response = curl_exec($curl);
+        $this->logger->debug(__LINE__ . $post . "\r\n" . $json_response);
         curl_close($curl);
 
         $response = json_decode($json_response);
@@ -232,6 +233,7 @@ class Api {
         if (isset($response->refresh_token) && !empty($response->refresh_token)) {
             $config_factory->set('refreshToken', $response->refresh_token);
         }
+        $config_factory->save();
 
         return TRUE;
     }
@@ -245,24 +247,29 @@ class Api {
      * @return array
      */
     public function executeN2Go($action, $post) {
-        $cURL = curl_init();
-        curl_setopt($cURL, CURLOPT_URL, "https://www.newsletter2go.com/en/api/$action/");
-        curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);
+      $cURL = curl_init();
+      curl_setopt($cURL, CURLOPT_URL, "https://www.newsletter2go.com/en/api/$action/");
+      curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);
+      curl_setopt($cURL, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . \Drupal::config('newsletter2go.config')
+          ->get('accessToken'),
+      ]);
 
-        $postData = '';
-        foreach ($post as $k => $v) {
-            $postData .= urlencode($k) . '=' . urlencode($v) . '&';
-        }
-        $postData = substr($postData, 0, -1);
+      $postData = '';
+      foreach ($post as $k => $v) {
+        $postData .= urlencode($k) . '=' . urlencode($v) . '&';
+      }
+      $postData = substr($postData, 0, -1);
 
-        curl_setopt($cURL, CURLOPT_POST, 1);
-        curl_setopt($cURL, CURLOPT_POSTFIELDS, $postData);
-        curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
+      curl_setopt($cURL, CURLOPT_POST, 1);
+      curl_setopt($cURL, CURLOPT_POSTFIELDS, $postData);
+      curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
 
-        $response = curl_exec($cURL);
-        curl_close($cURL);
+      $response = curl_exec($cURL);
+      $this->logger->debug(__LINE__ . $action . '_' . $postData . "\r\n" . $response);
+      curl_close($cURL);
 
-        return json_decode($response, TRUE);
+      return json_decode($response, TRUE);
     }
 
     /**
