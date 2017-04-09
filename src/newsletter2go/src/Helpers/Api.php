@@ -31,7 +31,8 @@ class Api {
 
         if (!$this->checkApiKey()) {
             $result = ResponseHelper::generateErrorResponse('Invalid or missing API key!',ResponseHelper::ERRNO_PLUGIN_CREDENTIALS_WRONG);
-        } else {
+        }
+        else {
             switch ($this->postParams['action']) {
                 case 'test':
                     $result['message'] = $this->test();
@@ -54,8 +55,7 @@ class Api {
             }
         }
 
-        drupal_json_output($result);
-        drupal_exit();
+      return $result;
     }
 
     protected function test()

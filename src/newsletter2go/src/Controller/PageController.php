@@ -5,6 +5,7 @@ namespace Drupal\newsletter2go\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\newsletter2go\Helpers\Api;
 use Drupal\newsletter2go\Helpers\Callback;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
  * Class PageController.
@@ -31,7 +32,8 @@ class PageController extends ControllerBase {
    */
   public function apiGo() {
     $instance = Api::getInstance();
-    $instance->processRequest($_SERVER['PHP_AUTH_USER'], $_GET, $_POST);
+    $result = $instance->processRequest($_SERVER['PHP_AUTH_USER'], $_GET, $_POST);
+    return new JsonResponse($result);
   }
 
   /**
@@ -104,8 +106,7 @@ class PageController extends ControllerBase {
       }
     }
 
-    drupal_json_output($result);
-    drupal_exit();
+    return new JsonResponse($result);
   }
 
   /**
