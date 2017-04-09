@@ -76,15 +76,16 @@ function newsletter2go_form_validate($form, &$form_state)
  */
 function newsletter2go_form_submit($form, &$form_state)
 {
+    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
 //    variable_set('newsletter2go_apikey', $form_state['values']['api']['apikey']);
 //    variable_set('newsletter2go_formUniqueCode', $form_state['values']['api']['formUniqueCode']);
     isset($_POST['formUniqueCode']) ?
-        variable_set('newsletter2go_formUniqueCode', $_POST['formUniqueCode']) : null;
+        $config_factory->set('formUniqueCode', $_POST['formUniqueCode']) : null;
 
     isset($form_state['values']['colors']) ?
-        variable_set('newsletter2go_colors', $form_state['values']['colors']) : null;
+        $config_factory->set('colors', $form_state['values']['colors']) : null;
     isset($_POST['widgetStyleConfig']) ?
-        variable_set('newsletter2go_widgetStyleConfig', $_POST['widgetStyleConfig']) : null;
+        $config_factory->set('widgetStyleConfig', $_POST['widgetStyleConfig']) : null;
     if (isset($_POST['resetValues'])) {
         disconnect();
     }
@@ -235,12 +236,13 @@ function getForms($authKey = '')
  */
 function execute($action, $post)
 {
-    $access_token = variable_get('newsletter2go_accessToken');
+    $config = \Drupal::config('newsletter2go.config');
+    $access_token = $config->get('accessToken');
     $responseJson = executeRequest($action, $access_token, $post);
 
     if ($responseJson['status_code'] == 403 || $responseJson['status_code'] == 401) {
         refreshTokens();
-        $access_token = variable_get('newsletter2go_accessToken');
+        $access_token = $config->get('accessToken');
         $responseJson = executeRequest($action, $access_token, $post);
     }
 
@@ -299,10 +301,11 @@ function executeRequest($action, $access_token, $post)
  */
 function refreshTokens()
 {
-
-    $authKey = variable_get('newsletter2go_authKey');
+    $config = \Drupal::config('newsletter2go.config');
+    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
+    $authKey = $config->get('authKey');
     $auth = base64_encode($authKey);
-    $refreshToken = variable_get('newsletter2go_refreshToken');
+    $refreshToken = $config->get('refreshToken');
     $refreshPost = array(
         'refresh_token' => $refreshToken,
         'grant_type' => N2GO_REFRESH_GRANT_TYPE,
@@ -327,10 +330,10 @@ function refreshTokens()
 
 
     if (isset($response->access_token) && !empty($response->access_token)) {
-        variable_set('newsletter2go_accessToken', $response->access_token);
+        $config_factory->set('accessToken', $response->access_token);
     }
     if (isset($response->refresh_token) && !empty($response->refresh_token)) {
-        variable_set('newsletter2go_refreshToken', $response->refresh_token);
+        $config_factory->set('refreshToken', $response->refresh_token);
     }
 
     return true;
@@ -342,12 +345,12 @@ function refreshTokens()
  */
 function disconnect()
 {
-
-    variable_set('newsletter2go_authKey', null);
-    variable_set('newsletter2go_accessToken', null);
-    variable_set('newsletter2go_refreshToken', null);
-    variable_set('newsletter2go_formUniqueCode', null);
-    variable_set('newsletter2go_widgetStyleConfig', null);
+    $config_factory = \Drupal::configFactory()->getEditable('newsletter2go.config');
+    $config_factory->set('authKey', null);
+    $config_factory->set('accessToken', null);
+    $config_factory->set('refreshToken', null);
+    $config_factory->set('formUniqueCode', null);
+    $config_factory->set('widgetStyleConfig', null);
 
 }
 
@@ -356,9 +359,10 @@ function disconnect()
  */
 function newsletter2go_block_configure($delta = '')
 {
-    $formUniqueCode = variable_get('newsletter2go_formUniqueCode');
-    $formType = variable_get('newsletter2go_formType');
-    $authKey = variable_get('newsletter2go_authKey');
+    $config = \Drupal::config('newsletter2go.config');
+    $formUniqueCode = $config->get('formUniqueCode');
+    $formType = $config->get('formType');
+    $authKey = $config->get('authKey');
     $forms = getForms($authKey);
     $options = array();
 
@@ -396,7 +400,7 @@ function newsletter2go_block_save($delta = '', $edit = array())
 {
     switch ($delta) {
         case 'newsletter2go' :
-            variable_set('newsletter2go_formType', $edit['form_type']);
+            \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $edit['form_type']);
             break;
     }
 }
