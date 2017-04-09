@@ -84,10 +84,10 @@ class ConfigForm extends ConfigFormBase {
 
     if ($queryParams['apiKey'] == '') {
       $config->set('apikey', generateRandomString());
-      $queryParams['apiKey'] = $config->get('newsletter2go_apikey');
+      $queryParams['apiKey'] = $config->get('apikey');
     }
 
-    $queryParams['language'] = $GLOBALS['language']->language;
+    $queryParams['language'] = \Drupal::languageManager()->getCurrentLanguage()->getId();
     $queryParams['url'] = rtrim($GLOBALS['base_url'], '/');
     $queryParams['callback'] = $queryParams['url'] . '/n2go/callback';
 
