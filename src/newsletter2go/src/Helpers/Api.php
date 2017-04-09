@@ -124,10 +124,11 @@ class Api {
     }
 
     /**
-     * Creates request and returns response. New API and access token
+     * Creates request and returns response. New API and access token.
      *
      * @param string $action
      * @param array $post
+     * 
      * @return string
      */
     public function execute($action, $post) {
@@ -145,12 +146,14 @@ class Api {
     }
 
     /**
-     * Creates request and returns response. New API and access token
+     * Creates request and returns response. New API and access token.
      *
      * @param string $action
      * @param string $access_token
      * @param array $post
+     * 
      * @return string
+     * 
      * @internal param mixed $params
      */
     private function executeRequest($action, $access_token, $post) {
@@ -187,6 +190,7 @@ class Api {
      * Creates request and returns response, refresh access token.
      *
      * @return bool
+     * 
      * @internal param mixed $params
      */
     private function refreshTokens() {
@@ -237,6 +241,7 @@ class Api {
      *
      * @param string $action
      * @param mixed $post
+     * 
      * @return array
      */
     public function executeN2Go($action, $post) {
@@ -258,6 +263,32 @@ class Api {
         curl_close($cURL);
 
         return json_decode($response, TRUE);
+    }
+
+    /**
+     * Get forms from N2GO API.
+     * 
+     * @param string $authKey
+     * @return array|false
+     */
+    public function getForms($authKey = '') {
+        $result = FALSE;
+
+        if (strlen($authKey) > 0) {
+            $form = $this->execute('forms/all?_expand=1', array());
+            if (isset($form['status']) && $form['status'] >= 200 && $form['status'] < 300) {
+                $result = array();
+                foreach ($form['value'] as $value) {
+                    $key = $value['hash'];
+                    $result[$key]['name'] = $value['name'];
+                    $result[$key]['hash'] = $value['hash'];
+                    $result[$key]['type_subscribe'] = $value['type_subscribe'];
+                    $result[$key]['type_unsubscribe'] = $value['type_unsubscribe'];
+                }
+            }
+        }
+
+        return $result;
     }
 
 }

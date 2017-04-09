@@ -5,8 +5,6 @@ const N2GO_INTEGRATION_URL = 'https://ui.newsletter2go.com/integrations/connect/
 const N2GO_REFRESH_GRANT_TYPE = 'https://nl2go.com/jwt_refresh';
 const N2GO_PLUGIN_VERSION = 4000;
 
-use Drupal\newsletter2go\Helpers\Api as APIHelper;
-
 /**
  * Return page alert.
  *
@@ -100,81 +98,4 @@ function generateRandomString($length = 40)
     }
 
     return $randomString;
-}
-
-/**
- * Get forms from N2GO API
- * @param string $authKey
- * @return array|false
- */
-
-function getForms($authKey = '') {
-    $result = FALSE;
-
-    if (strlen($authKey) > 0) {
-        $form = APIHelper::getInstance()->execute('forms/all?_expand=1', array());
-        if (isset($form['status']) && $form['status'] >= 200 && $form['status'] < 300) {
-            $result = array();
-            foreach ($form['value'] as $value) {
-                $key = $value['hash'];
-                $result[$key]['name'] = $value['name'];
-                $result[$key]['hash'] = $value['hash'];
-                $result[$key]['type_subscribe'] = $value['type_subscribe'];
-                $result[$key]['type_unsubscribe'] = $value['type_unsubscribe'];
-            }
-        }
-    }
-
-    return $result;
-}
-
-/**
- * Implements hook_block_configure().
- */
-function newsletter2go_block_configure($delta = '')
-{
-    $config = \Drupal::config('newsletter2go.config');
-    $formUniqueCode = $config->get('formUniqueCode');
-    $formType = $config->get('formType');
-    $authKey = $config->get('authkey');
-    $forms = getForms($authKey);
-    $options = array();
-
-    foreach ($forms as $f) {
-        if ($formUniqueCode == $f['hash']) {
-            $subscribe = $f['type_subscribe'];
-            $unsubscribe = $f['type_unsubscribe'];
-        }
-    }
-
-    $subscribe == true ? $options['subscribe'] = t('Subscribe-Form') : '';
-    $unsubscribe == true ? $options['unsubscribe'] = t('Unsubscribe-Form') : '';
-
-    $form = array();
-
-    switch ($delta) {
-        case 'newsletter2go' :
-            // Text field form element
-            $form['form_type'] = array(
-                '#type' => 'select',
-                '#title' => t('Form type'),
-                '#default_value' => $formType,
-                '#options' => $options,
-            );
-
-    }
-
-    return $form;
-}
-
-/**
- * Implements hook_block_save().
- */
-function newsletter2go_block_save($delta = '', $edit = array())
-{
-    switch ($delta) {
-        case 'newsletter2go' :
-            \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $edit['form_type']);
-            break;
-    }
 }
