@@ -114,7 +114,10 @@ class PageController extends ControllerBase {
    */
   function resetStyles() {
     $style = $_POST['style'];
-    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('widgetStyleConfig', $style);
+    \Drupal::configFactory()
+      ->getEditable('newsletter2go.config')
+      ->set('widgetStyleConfig', $style)
+      ->save();
     return new JsonResponse('success');
   }
 

@@ -94,7 +94,9 @@ class Form extends BlockBase implements ContainerFactoryPluginInterface {
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
-    \Drupal::configFactory()->getEditable('newsletter2go.config')->set('formType', $form_state->getValue('form_type'));
+    \Drupal::configFactory()->getEditable('newsletter2go.config')
+      ->set('formType', $form_state->getValue('form_type'))
+      ->save();
   }
 
   /**

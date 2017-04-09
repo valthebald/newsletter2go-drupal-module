@@ -49,13 +49,13 @@ class N2goMail extends PhpMail {
     $mail_body = preg_replace('@\r?\n@', $line_endings, $message['body']);
     // @todo: move all config logic to Api class.
     $result = $this->api->executeN2Go('send/email', [
-      'key' => $this->config->get('apikey'),
+      'key' => $this->config->get('authkey'),
       'to' => $message['to'],
+      'from' => 'mike.lange@ffwagency.com',
       'subject' => Unicode::mimeHeaderEncode($message['subject']),
       'body' => $mail_body,
       'text' => strip_tags($mail_body),
     ]);
-    \Drupal::logger('mailer')->debug(print_r($result, 1));
     return (bool)$result['success'];
   }
 

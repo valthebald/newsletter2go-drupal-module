@@ -94,7 +94,9 @@ class ConfigForm extends ConfigFormBase {
     $queryParams['apiKey'] = $apiKey;
 
     if ($queryParams['apiKey'] == '') {
-      $config->set('apikey', generateRandomString());
+      \Drupal::configFactory()->getEditable('newsletter2go.config')
+        ->set('apikey', generateRandomString())
+        ->save();
       $queryParams['apiKey'] = $config->get('apikey');
     }
 
@@ -135,7 +137,6 @@ class ConfigForm extends ConfigFormBase {
     $base_path = \Drupal::url('<front>');
 
     $form['api'] = array(
-
       '#tree' => true,
       '#submit' => array('newsletter2go_form_submit'),
       'n2goSection' => array(
@@ -429,6 +430,7 @@ class ConfigForm extends ConfigFormBase {
       // We also have to submit null values.
       $config_factory->set($name, $form_state->getValue($name));
     }
+    $config_factory->save();
 
     parent::submitForm($form, $form_state);
   }
@@ -443,5 +445,6 @@ class ConfigForm extends ConfigFormBase {
     $config_factory->set('refreshToken', null);
     $config_factory->set('formUniqueCode', null);
     $config_factory->set('widgetStyleConfig', null);
+    $config_factory->save();
   }
 }

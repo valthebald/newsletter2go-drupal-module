@@ -233,6 +233,7 @@ class Api {
         if (isset($response->refresh_token) && !empty($response->refresh_token)) {
             $config_factory->set('refreshToken', $response->refresh_token);
         }
+        $config_factory->save();
 
         return TRUE;
     }
