@@ -29,7 +29,7 @@ newsletter2go.page_controller_n2go_callback:
     _controller: '\Drupal\newsletter2go\Controller\PageController::goCallback'
     _title: 'Newsletter2Go'
   requirements:
-    _permission: 'access newsletter2go content'
+    _access: 'TRUE'
 
 newsletter2go.page_controller_n2go_subscribe:
   path: '/n2go/subscribe'

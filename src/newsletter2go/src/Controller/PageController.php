@@ -42,15 +42,15 @@ class PageController extends ControllerBase {
    */
   public function goCallback() {
     $instance = Callback::getInstance();
-    $instance->processCallback($_POST);
+    $result = $instance->processCallback($_POST);
+    return new JsonResponse($result);
   }
 
 
   /**
    * Request newsletter2go page.
    */
-  function subscribe()
-  {
+  function subscribe() {
     $notFound = false;
     $noValidEmail = false;
     $config = \Drupal::config('newsletter2go.config');
@@ -74,13 +74,11 @@ class PageController extends ControllerBase {
     }
 
     if ($notFound) {
-      drupal_json_output(array('success' => 0, 'message' => $texts['failureRequired']));
-      drupal_exit();
+      return new JsonResponse(['success' => 0, 'message' => $texts['failureRequired']]);
     }
 
     if ($noValidEmail) {
-      drupal_json_output(array('success' => 0, 'message' => $texts['failureEmail']));
-      drupal_exit();
+      return new JsonResponse(['success' => 0, 'message' => $texts['failureEmail']]);
     }
 
     $post['key'] = $config->get('apikey');
@@ -117,8 +115,7 @@ class PageController extends ControllerBase {
   function resetStyles() {
     $style = $_POST['style'];
     \Drupal::configFactory()->getEditable('newsletter2go.config')->set('widgetStyleConfig', $style);
-    print 'success';
-    drupal_exit();
+    return new JsonResponse('success');
   }
 
 }

@@ -381,7 +381,7 @@ class ConfigForm extends ConfigFormBase {
           '</div>
                         <div id="widgetPreviewUnsubscribe" ' . ($active ? 'style="display:none"' : '') . '><script id="n2g_script_unsubscribe"></script></div>
                         <div id="nl2gStylesConfig" class="preview-pane">
-                            <textarea id="widgetStyleConfig" name="widgetStyleConfig">' . $nl2gStylesConfigObject . '</textarea>
+                            <textarea id="widgetStyleConfig" name="widgetStyleConfig">' . json_encode($nl2gStylesConfigObject, JSON_PRETTY_PRINT) . '</textarea>
                         </div>
                     </div>
                     <div>
