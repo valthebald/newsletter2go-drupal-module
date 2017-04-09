@@ -250,6 +250,10 @@ class Api {
       $cURL = curl_init();
       curl_setopt($cURL, CURLOPT_URL, "https://www.newsletter2go.com/en/api/$action/");
       curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);
+      curl_setopt($cURL, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . \Drupal::config('newsletter2go.config')
+          ->get('accessToken'),
+      ]);
 
       $postData = '';
       foreach ($post as $k => $v) {
