@@ -182,19 +182,24 @@ class ConfigForm extends ConfigFormBase {
                                         <div class="panel-body">',
       ),
 
-      'connectButton' => array(
+      'connectButton' => ($hasForms === FALSE) ? [
+        '#type' => 'markup',
         '#markup' => '  <div class="n2go-row">
                         <div class="n2go-block50"><span>' . $this->t('Login or Create Account') . '</span></div>
-                        <div class="n2go-block25">' .
-
-          ($hasForms === false ? ' <div class="n2go-btn">
+                        <div class="n2go-block25">
+                          <div class="n2go-btn">
                                     <input type="hidden" name="apiKey" placeholder="" value=' . $apiKey . ' style="width:300px" readonly>
                                     <a href=' . $apiConnectUrl . ' target="_blank" style="padding:5px"><span class="fa fa-plug"></span> <span>' . $this->t('Login or Create Account') . '</span></a>
-                                </div></div></div>'
-
-            : '<span class="n2go-label-success"> <span class="fa fa-check margin-right-5"></span>
-                            <span>' .$this->t('Successfully connected') . '</span></span><br><br><button type="submit" name="resetValues" value="disconnect" class="n2go-disconnect-btn">' .$this->t('Disconnect') . '</button></div></div>'),
-      ),
+                                </div>'
+        ] : [
+          '#type' => 'submit',
+          '#value' => $this->t('Disconnect'),
+          '#prefix' => '<div class="n2go-row"><div class="n2go-block25">
+        <span class="n2go-label-success"> <span class="fa fa-check margin-right-5"></span>
+         <span>' .$this->t('Successfully connected') . '</span></span><br/><br/>',
+          '#suffix' => '</div></div>',
+          '#attributes' => ['class' => ['n2go-disconnect-btn']],
+        ],
 
       'selectBody' => array(
         '#markup' => '  <div class="n2go-row">
@@ -402,6 +407,10 @@ class ConfigForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
+    // Do not validate disconnect requests.
+    if ('Disconnect' === ($form_state->getTriggeringElement()['#value'])->getUntranslatedString()) {
+      return;
+    }
     if (!$form_state->hasValue('apikey')) {
       $form_state->setErrorByName('apikey', t('You must enter API key'));
     }
@@ -412,7 +421,7 @@ class ConfigForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    if ($form_state->getValue('resetValues')) {
+    if ('Disconnect' === ($form_state->getTriggeringElement()['#value'])->getUntranslatedString()) {
       // Reset default values to NULL.
       $this->resetValues();
       parent::submitForm($form, $form_state);

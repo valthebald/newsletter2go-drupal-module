@@ -471,8 +471,6 @@ input[type=checkbox].n2go-required:checked:before {
     text-decoration: none;
     font-size: 13px;
     line-height: 26px;
-    height: 28px;
-    width: 88px;
     margin: 0;
     padding: 0 10px 1px;
     cursor: pointer;

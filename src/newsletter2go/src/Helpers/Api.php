@@ -10,52 +10,63 @@ class Api {
     private $apikey;
 
     private $logger;
+    protected $debugMode = FALSE;
 
     private function __construct() {
       $this->logger = \Drupal::logger('newsletter2go');
     }
 
     public static function getInstance() {
-        return self::$instance ? : new Api();
+      return self::$instance ? : new Api();
     }
 
-    public function processRequest($apikey, $getParams, $postParams) {
-        $this->apikey = $apikey;
-        if($apikey == null && isset($postParams['apikey'])){
-            $this->apikey = $postParams['apikey'];
-        }
-        $this->getParams = $getParams;
-        $this->postParams = $postParams;
-        $result = array('success' => 1);
+  /**
+   * Turn debugging mode on and off
+   *
+   * @param bool $debugMode
+   */
+  public function setDebug($debugMode) {
+    $this->debugMode = (bool)$debugMode;
+  }
 
-        if (!$this->checkApiKey()) {
-            $result = ResponseHelper::generateErrorResponse('Invalid or missing API key!',ResponseHelper::ERRNO_PLUGIN_CREDENTIALS_WRONG);
-        }
-        else {
-            switch ($this->postParams['action']) {
-                case 'test':
-                    $result['message'] = $this->test();
-                    break;
-                case 'getPost':
-                    $post = $this->getPost();
-                    if (!$post) {
-                        $result = ResponseHelper::generateErrorResponse('Post with given id not found!',ResponseHelper::ERRNO_PLUGIN_OTHER);
-                    }else{
-                        $result = ResponseHelper::generateSuccessResponse(array('post' => $post));
-                    }
-                    break;
-                case 'getPluginVersion':
-                    $version = $this->getPluginVersion();
-                    $result = ResponseHelper::generateSuccessResponse(array('version' => $version));
-                    break;
-                default:
-                    $result = ResponseHelper::generateErrorResponse('Invalid action!',ResponseHelper::ERRNO_PLUGIN_OTHER);
-                    break;
-            }
-        }
-
-      return $result;
+  public function processRequest($apikey, $getParams, $postParams) {
+    $this->apikey = $apikey;
+    if ($apikey == NULL && isset($postParams['apikey'])) {
+      $this->apikey = $postParams['apikey'];
     }
+    $this->getParams = $getParams;
+    $this->postParams = $postParams;
+    $result = array('success' => 1);
+
+    if (!$this->checkApiKey()) {
+      $result = ResponseHelper::generateErrorResponse('Invalid or missing API key!', ResponseHelper::ERRNO_PLUGIN_CREDENTIALS_WRONG);
+    }
+    else {
+      switch ($this->postParams['action']) {
+        case 'test':
+          $result['message'] = $this->test();
+          break;
+        case 'getPost':
+          $post = $this->getPost();
+          if (!$post) {
+            $result = ResponseHelper::generateErrorResponse('Post with given id not found!', ResponseHelper::ERRNO_PLUGIN_OTHER);
+          }
+          else {
+            $result = ResponseHelper::generateSuccessResponse(array('post' => $post));
+          }
+          break;
+        case 'getPluginVersion':
+          $version = $this->getPluginVersion();
+          $result = ResponseHelper::generateSuccessResponse(array('version' => $version));
+          break;
+        default:
+          $result = ResponseHelper::generateErrorResponse('Invalid action!', ResponseHelper::ERRNO_PLUGIN_OTHER);
+          break;
+      }
+    }
+
+    return $result;
+  }
 
     protected function test()
     {
@@ -176,7 +187,9 @@ class Api {
 
         curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
         $response = curl_exec($cURL);
-        $this->logger->debug(__LINE__ . $action . '_' . $postData . "\r\n" . $response);
+        if ($this->debugMode) {
+          $this->logger->debug(__LINE__ . ':' . $action . ':' . $postData . "\r\n" . $response);
+        }
         $response = json_decode($response, TRUE);
         $status = curl_getinfo($cURL);
         $response['status_code'] = $status['http_code'];
@@ -221,7 +234,9 @@ class Api {
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
         $json_response = curl_exec($curl);
-        $this->logger->debug(__LINE__ . $post . "\r\n" . $json_response);
+        if ($this->debugMode) {
+          $this->logger->debug(__LINE__ . ':' . $post . "\r\n" . $json_response);
+        }
         curl_close($curl);
 
         $response = json_decode($json_response);
@@ -266,7 +281,9 @@ class Api {
       curl_setopt($cURL, CURLOPT_SSL_VERIFYPEER, FALSE);
 
       $response = curl_exec($cURL);
-      $this->logger->debug(__LINE__ . $action . '_' . $postData . "\r\n" . $response);
+      if ($this->debugMode) {
+        $this->logger->debug(__LINE__ . ':' . $postData . "\r\n" . $response);
+      }
       curl_close($cURL);
 
       return json_decode($response, TRUE);
