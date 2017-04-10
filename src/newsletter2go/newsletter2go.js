@@ -1,4 +1,5 @@
 window.addEventListener('load', function () {
+    console.log('here');
     var formUniqueCode = document.getElementById('formUniqueCode').value.trim(),
         widgetPreviewSubscribe = document.getElementById('widgetPreview'),
         widgetPreviewUnsubscribe = document.getElementById('widgetPreviewUnsubscribe'),
@@ -14,10 +15,15 @@ window.addEventListener('load', function () {
                 } else {
                     n2gConfig = JSON.parse(widgetStyleConfig.textContent);
                 }
+                console.log(n2gConfig);
 
                 [].forEach.call(document.getElementsByClassName('n2go-colorField'), function (element) {
                     var field = element.name.match(/[^.]+/g);
-                    var style = getStyle(field[1], n2gConfig[field[0]]['style']);
+                    if (!field || !field[0]) return;
+                    var style = '';
+                    if (!n2gConfig && (typeof n2gConfig[field[0]]['style'] != 'undefined')) {
+                        getStyle(field[1], n2gConfig[field[0]]['style']);
+                    }
 
                     if (style !== '') {
                         style = style.replace('#','');

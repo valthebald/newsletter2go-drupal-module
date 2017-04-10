@@ -4,6 +4,7 @@ namespace Drupal\newsletter2go\Form;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\State\StateInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -38,7 +39,7 @@ class ConfigForm extends ConfigFormBase {
   protected $helper;
   
   /**
-   * Constructs a new SiteMaintenanceModeForm.
+   * Constructs N2Go configuration form.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The factory for configuration objects.
@@ -136,11 +137,11 @@ class ConfigForm extends ConfigFormBase {
 
     $base_path = \Drupal::url('<front>');
 
+    // Because of broken HTML, use Markup::create() instead of strings to avoid sanitation.
     $form['api'] = array(
       '#tree' => true,
-      '#submit' => array('newsletter2go_form_submit'),
       'n2goSection' => array(
-        '#markup' => '    <div class="n2go-section">
+        '#markup' => Markup::create('    <div class="n2go-section">
         <img src="'. $base_path . drupal_get_path('module', 'newsletter2go') . '/images/banner_drupal_newsletter2go.png"'.'
 			  
             width="92%; margin-left: 18px;" class="n2go_logo">
@@ -179,7 +180,7 @@ class ConfigForm extends ConfigFormBase {
                                     <div class="panel-heading text-center">
                                         <h3>' . $this->t('Newsletter2Go Drupal Plugin') . '</h3>
                                     </div>
-                                        <div class="panel-body">',
+                                        <div class="panel-body">'),
       ),
 
       'connectButton' => ($hasForms === FALSE) ? [
@@ -202,9 +203,9 @@ class ConfigForm extends ConfigFormBase {
         ],
 
       'selectBody' => array(
-        '#markup' => '  <div class="n2go-row">
+        '#markup' => Markup::create('  <div class="n2go-row">
                       <div class="n2go-block50"><span>' .$this->t('Choose the connected subscribe form') . '</span></div>
-                        <div class="n2go-block25">',
+                        <div class="n2go-block25">'),
       ),
 
       'formUniqueCode' => array(
@@ -215,17 +216,17 @@ class ConfigForm extends ConfigFormBase {
       ),
 
       'endSelectBody' => array(
-        '#markup' => '</div></div>',
+        '#markup' => Markup::create('</div></div>'),
       ),
 
       'endPanelBody' => array(
-        '#markup' => '</div>',
+        '#markup' => Markup::create('</div>'),
       ),
 
       'colorPanel' => array(
-        '#markup' => '    <div class="n2go-row">
+        '#markup' => Markup::create('    <div class="n2go-row">
                     <div class="n2go-block50"><span>' .$this->t('Configure your Drupal widget') . '</span></div>
-                    <div class="n2go-block50">',
+                    <div class="n2go-block50">'),
       ),
 
       'formUniqueCode' => array(
@@ -353,20 +354,20 @@ class ConfigForm extends ConfigFormBase {
       ),
 
       'endColorPanel' => array(
-        '#markup' => '</div>
-             </div>',
+        '#markup' => Markup::create('</div>
+             </div>'),
       ),
 
       'endN2GoPanel' => array(
-        '#markup' => '</div>',
+        '#markup' => Markup::create('</div>'),
       ),
 
       'endN2GoMainBlock' => array(
-        '#markup' => '</div>',
+        '#markup' => Markup::create('</div>'),
       ),
 
       'preview' => array(
-        '#markup' => '<div class="n2go-block50 main-block">
+        '#markup' => Markup::create('<div class="n2go-block50 main-block">
             <div class="panel">
                 <div class="panel-heading text-center">
                     <h3>' .$this->t('This is how your form will look like') . '</h3>
@@ -387,7 +388,7 @@ class ConfigForm extends ConfigFormBase {
           '</div>
                         <div id="widgetPreviewUnsubscribe" ' . ($active ? 'style="display:none"' : '') . '><script id="n2g_script_unsubscribe"></script></div>
                         <div id="nl2gStylesConfig" class="preview-pane">
-                            <textarea id="widgetStyleConfig" name="widgetStyleConfig">' . json_encode($nl2gStylesConfigObject, JSON_PRETTY_PRINT) . '</textarea>
+                            <textarea id="widgetStyleConfig" name="widgetStyleConfig">' . json_encode($nl2gStylesConfigObject) . '</textarea>
                         </div>
                     </div>
                     <div>
@@ -395,7 +396,7 @@ class ConfigForm extends ConfigFormBase {
                     </div>
                 </div>
             </div>
-        </div>',
+        </div>'),
       ),
 
     );
@@ -407,6 +408,7 @@ class ConfigForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
+    return;
     // Do not validate disconnect requests.
     if ('Disconnect' === ($form_state->getTriggeringElement()['#value'])->getUntranslatedString()) {
       return;
@@ -429,15 +431,15 @@ class ConfigForm extends ConfigFormBase {
     }
     $config_factory = \Drupal::configFactory()
       ->getEditable('newsletter2go.config');
+    $userInput = $form_state->getUserInput();
     foreach ([
                'formUniqueCode',
                'colors',
                'widgetStyleConfig',
                'apikey',
-               'formUniqueCode',
              ] as $name) {
       // We also have to submit null values.
-      $config_factory->set($name, $form_state->getValue($name));
+      $config_factory->set($name, $userInput[$name]);
     }
     $config_factory->save();
 
